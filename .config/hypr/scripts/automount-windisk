@@ -1,0 +1,5 @@
+#!/bin/bash
+
+sudo mount /dev/nvme0n1p3 /mnt/win/Canary
+
+sudo mount /dev/nvme0n1p7 /mnt/win/Apps
