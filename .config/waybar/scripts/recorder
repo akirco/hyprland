@@ -2,42 +2,42 @@
 
 pidf="$HOME/Videos/Screencasts/process.pid"
 WF_RECORDER_OPTS=""
-VIDEOEXT="mp4"
+VIDEOEXT="mkv"
 
 if [ "$1" == "status" ]; then
-    if [ -f "$pidf" ]; then
-        awk 'BEGIN{printf "{\"text\":\"   \",\"class\":\"recording\", \"tooltip\":\"Recording\\n"}
+	if [ -f "$pidf" ]; then
+		awk 'BEGIN{printf "{\"text\":\"   \",\"class\":\"recording\", \"tooltip\":\"Recording\\n"}
 		NR==1{printf "PID: %s\\n", $0}
 		NR==2{printf "Save to: %s\\n", $0}
 		NR==3{printf "Log to: %s\"}", $0}' "$pidf"
-    else
-        echo '{"text":"   ","tooltip":"Stopped"}'
-    fi
-    exit
+	else
+		echo '{"text":"   ","tooltip":"Stopped"}'
+	fi
+	exit
 elif [ "$1" == "toggle" ]; then
-    if [ -f "$pidf" ]; then
-        pid=$(cat "$pidf")
-        kill -2 "$pid"
-        rm "$pidf" >/dev/null && exit 5
-    else
-        mkdir -p "$HOME/Videos/Screencasts"
-        bf="$HOME/Videos/Screencasts/$(date +'%Y%m%dT%H%M%S')"
-        vidf="$bf.$VIDEOEXT"
-        logf="$bf.log"
-        if [ "$2" == "fullscreen" ]; then
-            wf-recorder "$WF_RECORDER_OPTS" -f "$vidf" 1>"$logf" 2>&1 &
-        elif [ "$2" == "region" ]; then
-            sleep 1
-            wf-recorder "$WF_RECORDER_OPTS" -g "$(slurp)" -f "$vidf" 1>"$logf" 2>&1 &
-        else
-            printf "Argument %s not valid" "$2"
-            exit
-        fi
-        pid=$(jobs -p | tail -n 1)
-        printf "%d\n%s\n%s" "$pid" "$vidf" "$logf" >"$pidf"
-        disown "$pid" >/dev/null && exit 5
-    fi
-    exit
+	if [ -f "$pidf" ]; then
+		pid=$(cat "$pidf")
+		kill -2 "$pid"
+		rm "$pidf" >/dev/null && exit 5
+	else
+		mkdir -p "$HOME/Videos/Screencasts"
+		bf="$HOME/Videos/Screencasts/$(date +'%Y%m%dT%H%M%S')"
+		vidf="$bf.$VIDEOEXT"
+		logf="$bf.log"
+		if [ "$2" == "fullscreen" ]; then
+			wf-recorder "$WF_RECORDER_OPTS" -a -f "$vidf" 1>"$logf" 2>&1 &
+		elif [ "$2" == "region" ]; then
+			sleep 1
+			wf-recorder "$WF_RECORDER_OPTS" -a -g "$(slurp)" -f "$vidf" 1>"$logf" 2>&1 &
+		else
+			printf "Argument %s not valid" "$2"
+			exit
+		fi
+		pid=$(jobs -p | tail -n 1)
+		printf "%d\n%s\n%s" "$pid" "$vidf" "$logf" >"$pidf"
+		disown "$pid" >/dev/null && exit 5
+	fi
+	exit
 else
-    printf "Argument %s not valid" "$1"
+	printf "Argument %s not valid" "$1"
 fi
