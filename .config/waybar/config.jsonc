@@ -40,9 +40,9 @@
       "6": "➏",
       "7": "➐",
       "8": "➑",
-      // "active": "",
       "active": "〇",
-      "default": " "
+      "default": "➏"
+      // "default": " "
     },
     "persistent_workspaces": {
       "1": [
