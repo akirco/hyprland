@@ -66,7 +66,7 @@ alias tofish="sudo chsh $USER -s /bin/fish && echo 'Now log out.'"
 alias nhosts="sudo $EDITOR /etc/hosts"
 alias nhostname="sudo $EDITOR /etc/hostname"
 alias nvb="$EDITOR ~/.bashrc"
-alias nvz="$EDITOR ~/.zshrc"
+alias nvz="$EDITOR ~/.config/zsh/.zshrc_mine"
 alias nvp="$EDITOR /etc/paru.conf"
 alias nvh="$EDITOR ~/.config/hypr/hyprland.conf"
 
@@ -82,6 +82,11 @@ alias icat="kitty +kitten icat"
 
 # btop
 alias bp="btop"
+
+# python
+alias pv="python -m venv .venv"
+alias pva="source .venv/bin/activate"
+alias pvi="pip install --use-pep517"
 
 ### methods ###
 
