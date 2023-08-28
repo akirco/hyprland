@@ -60,3 +60,4 @@ Windows
 .config/QtProject.conf
 .config/simple-update-notifier
 .config/wechat
+.config/Electron

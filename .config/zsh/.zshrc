@@ -15,3 +15,11 @@ plug "wintermi/zsh-rust"
 # Load and initialise completion system
 autoload -Uz compinit
 compinit
+
+# pnpm
+export PNPM_HOME="/home/archx/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
