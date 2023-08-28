@@ -1,0 +1,136 @@
+### EXPORT ###
+export ALL_PROXY=127.0.0.1:7890
+export GOPROXY=https://goproxy.cn
+export EDITOR='nvim'
+export VISUAL='nvim'
+export PATH=/home/archx/.local/bin:$PATH
+export BAT_CONFIG_PATH=~/.config/bat/config
+export NODE_REPL_HISTORY=~/.local/state/node/.node_repl_history
+export PYTHON_HISTORY_DIR=~/.local/state/python
+export HISTFILE=~/.local/state/bash/.bash_history
+export GIT_CONFIG=~/.config/git/.gitconfig
+
+# LIST
+alias ls='ls --color=auto'
+alias la='ls -a'
+alias ll='ls -alFh'
+alias l='ls'
+alias l.="ls -A | grep -E '^\.'"
+
+# fix obvious typo's
+alias jo='joshuto'
+alias s='s -p google'
+
+#source
+
+alias sz='source ~/.config/zsh/.zshrc'
+# nvim
+alias vi="nvim"
+
+### pacman ###
+alias ipa='paru -S'
+alias upa='paru -Syyu'
+alias rpa='paru -Rsc'
+alias lu='lsparu'
+
+#Cleanup orphaned packages
+alias rmpp='sudo pacman -Rns $(pacman -Qtdq)'
+alias rmpc='sudo pacman -Sc --noconfirm'
+
+#Recent Installed Packages
+alias lspp="expac --timefmt='%Y-%m-%d %T' '%l\t%n %v' | sort | tail -50 | nl | bat"
+alias lsppl="expac --timefmt='%Y-%m-%d %T' '%l\t%n %v' | sort | tail -3000 | nl | bat"
+alias lspps="expac -H M '%m\t%n' | sort -h | nl | bat"
+alias lpacman="bat /var/log/pacman.log"
+
+#continue download
+alias wget="wget -c"
+
+# grep
+alias grep='grep --color=auto'
+alias egrep='egrep -E --color=auto'
+alias fgrep='fgrep -F --color=auto'
+
+# ripgrep
+alias rg='rg --sort path | nl | bat'
+
+# fc-cache
+alias update-fc='sudo fc-cache -fv'
+
+#switch between bash and zsh
+alias tobash="sudo chsh $USER -s /bin/bash && echo 'Now log out.'"
+alias tozsh="sudo chsh $USER -s /bin/zsh && echo 'Now log out.'"
+alias tofish="sudo chsh $USER -s /bin/fish && echo 'Now log out.'"
+
+#open config
+alias nhosts="sudo $EDITOR /etc/hosts"
+alias nhostname="sudo $EDITOR /etc/hostname"
+alias nvb="$EDITOR ~/.bashrc"
+alias nvz="$EDITOR ~/.zshrc"
+alias nvp="$EDITOR /etc/paru.conf"
+alias nvh="$EDITOR ~/.config/hypr/hyprland.conf"
+
+#youtube download
+alias yta-aac="yt-dlp --extract-audio --audio-format aac "
+alias yta-best="yt-dlp --extract-audio --audio-format best "
+alias yta-flac="yt-dlp --extract-audio --audio-format flac "
+alias yta-mp3="yt-dlp --extract-audio --audio-format mp3 "
+alias ytv-best="yt-dlp -f 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio' --merge-output-format mp4 "
+
+# kitty
+alias icat="kitty +kitten icat"
+
+# btop
+alias bp="btop"
+
+### methods ###
+
+# # ex = EXtractor for all kinds of archives
+# # usage: ex <file>
+ex() {
+  if [ -f $1 ]; then
+    case $1 in
+    *.tar.bz2) tar xjf $1 ;;
+    *.tar.gz) tar xzf $1 ;;
+    *.bz2) bunzip2 $1 ;;
+    *.rar) unrar x $1 ;;
+    *.gz) gunzip $1 ;;
+    *.tar) tar xf $1 ;;
+    *.tbz2) tar xjf $1 ;;
+    *.tgz) tar xzf $1 ;;
+    *.zip) unzip $1 ;;
+    *.Z) uncompress $1 ;;
+    *.7z) 7z x $1 ;;
+    *.deb) ar x $1 ;;
+    *.tar.xz) tar xf $1 ;;
+    *.tar.zst) tar xf $1 ;;
+    *) echo "'$1' cannot be extracted via ex()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+proxy_on() {
+  export all_proxy="socks5://127.0.0.1:7890"
+}
+
+proxy_on
+
+proxy_off() {
+  unset all_proxy
+}
+
+slp() {
+  if [[ -n $1 ]]; then
+    expac --timefmt='%Y-%m-%d %T' '%l\t%n %v' | sort -h | grep $1 | bat
+  else
+    echo "search local packages"
+  fi
+}
+
+# nvm
+[ -z "$NVM_DIR" ] && export NVM_DIR="$HOME/.nvm"
+source /usr/share/nvm/nvm.sh
+source /usr/share/nvm/bash_completion
+source /usr/share/nvm/install-nvm-exec

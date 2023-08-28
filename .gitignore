@@ -56,6 +56,5 @@ Windows
 .config/zsh/.oh-my-zsh
 .config/zsh/.zcompdump*
 .config/zsh/.zsh_history
-.config/zsh/.zshrc_mine
 .config/zsh/.zshrc.pre-oh-my-zsh
 .config/QtProject.conf
