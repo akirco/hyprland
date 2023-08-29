@@ -1,0 +1,37 @@
+#!/bin/bash
+
+now=$(date +"%Y-%m-%d-%H-%M-%S")
+ext="mp4"
+video_file="$HOME/Videos/$now.$ext"
+pid_file="$HOME/Videos/wf-recorder.pid"
+
+notify() {
+    timer="$1"
+    msg="$2"
+    notify-send -a "wf-recorder" -t "$timer" "wf-recorder" "$msg"
+}
+
+cdialog() {
+    yad --title='Confirm?' --borders=15 --center --fixed --undecorated --button=Yes:0 --button=No:1 --text="really stop recording?" --text-align=center
+}
+
+if [ -f "$pid_file" ]; then
+    notify 6000 "recording..."
+    cdialog
+    if [[ "$?" == 0 ]]; then
+        pid=$(cat "$pid_file")
+        kill -2 "$pid"
+        rm "$pid_file" >/dev/null && exit 5
+    else
+        exit
+    fi
+else
+    notify 1000 "3"
+    sleep 1
+    notify 1000 "2"
+    sleep 1
+    notify 1000 "1"
+    sleep 1
+    wf-recorder -a -f "$video_file" &
+    echo $! >"$pid_file"
+fi
