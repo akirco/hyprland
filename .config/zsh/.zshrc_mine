@@ -139,3 +139,5 @@ slp() {
 source /usr/share/nvm/nvm.sh
 source /usr/share/nvm/bash_completion
 source /usr/share/nvm/install-nvm-exec
+
+source $HOME/.local/bin/hosts/hosts.sh

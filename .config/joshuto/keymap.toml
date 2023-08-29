@@ -104,6 +104,7 @@ keymap = [
   { keys = ["m", "k"], command = ":mkdir " },
   { keys = ["c", "w"], command = ":rename " },
   { keys = ["B"], command = "shell bash"},
+  { keys = ["Z"], command = "shell zsh"},
   { keys = ["/"], command = ":search " },
   { keys = ["|"], command = ":search_inc " },
   { keys = ["\\"], command = ":search_glob " },
