@@ -61,3 +61,4 @@ Windows
 .config/simple-update-notifier
 .config/wechat
 .config/Electron
+.startingAppData/%23
