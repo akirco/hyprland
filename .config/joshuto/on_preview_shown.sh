@@ -9,6 +9,7 @@ PREVIEW_HEIGHT="$5"		# Height of the preview pane (number of fitting characters)
 TMP_FILE="$(mktemp).jpg"
 
 mimetype=$(file --mime-type -Lb "$FILE_PATH")
+# echo "$mimetype"
 
 kitty_clear () {
     kitty +kitten icat \

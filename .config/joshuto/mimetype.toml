@@ -1,14 +1,19 @@
 [class]
 audio_default = [
-  { command = "musikcube", args = ["--",] },
-  { command = "mpv", args = ["--",] },
+  { command = "musikcube", args = [
+    "--",
+  ] },
+  { command = "mpv", args = [
+    "--",
+  ] },
   { command = "mediainfo", confirm_exit = true },
 ]
 
 image_default = [
   { command = "imv", args = [
-    "--"
+    "--",
   ], fork = true, silent = true },
+  { command = "imv", args = ["."], fork = true, silent = true},
   { command = "krita", args = [
     "--",
   ], fork = true, silent = true },
@@ -31,8 +36,8 @@ video_default = [
 ]
 
 text_default = [
-   { command = "nvim" },
-   { command = "bat", args = [
+  { command = "nvim" },
+  { command = "bat", args = [
     "--paging=always",
   ] },
 ]

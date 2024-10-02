@@ -22,9 +22,9 @@ directory = ""
 "Templates" = ""
 "Videos" = ""
 ".config" = ''
-"RecycleBin"='🗑'
-"Windows"='🪟'
-"CodeSpace"='௹ '
+"Trash"=''
+"Windows"=''
+"Projects"='󰨞'
 # Spanish
 "Escritorio" = ""
 "Documentos" = ""

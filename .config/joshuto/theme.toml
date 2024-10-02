@@ -1,19 +1,38 @@
 ##########################################
+## General
+##########################################
+lscolors_enabled = false
+# The image preview background color, only RGB colors are accepted.
+# preview_background = "#FFFFFF"
+
+##########################################
 ## Tabs
 ##########################################
 
-# Inactive tabs
-[tabs.inactive]
-bg = "black"
-fg = "white"
+[tabs]
+[tabs.styles]
 
-
-# Active tabs
-[tabs.active]
-bg = "light_cyan"
+# Style of active tab & current directory
+[tabs.styles.active]
+bg = "light_blue"
 fg = "black"
 bold = true
-invert=true
+
+# Style of inactive tabs
+[tabs.styles.inactive]
+
+# Style of the left/front tab scroll tag (when tabs overflow)
+[tabs.styles.scroll_front]
+fg = "yellow"
+bold = true
+
+# Style of the right/back tab scroll tag (when tabs overflow)
+[tabs.styles.scroll_back]
+fg = "yellow"
+bold = true
+
+# There are more style options and strings to configure
+# the tab-bar theme.
 
 ##########################################
 ## File List - Selections
@@ -23,15 +42,13 @@ invert=true
 [selection]
 fg = "light_yellow"
 bold = true
+prefix = " "
 
 # Files selected in current visual mode
 [visual_mode_selection]
 fg = "light_red"
 bold = true
-
-[selection.prefix]
-prefix = "  "
-size = 2
+prefix = "v "
 
 ##########################################
 ## File List - System File Types
@@ -73,7 +90,7 @@ bold = true
 ##########################################
 ## File list - Override style by extension
 ##########################################
-# This sections allows to override the basic 
+# This sections allows to override the basic
 # style with a specific style for the file's
 # extension.
 
