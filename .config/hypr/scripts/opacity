@@ -1,0 +1,35 @@
+#!/bin/bash
+
+ADDR=$(hyprctl activewindow -j | jq -r '.address')
+[ -z "$ADDR" ] || [ "$ADDR" = "null" ] && exit 0
+
+ALPHA=$(hyprctl getprop "address:$ADDR" alpha)
+[ -z "$ALPHA" ] && ALPHA=1.0
+
+STEP=0.1
+
+case $1 in
+    "+"|"increase"|"up")
+        if (( $(echo "$ALPHA >= 1.0" | bc -l) )); then
+            NEW_ALPHA=1.0
+            hyprctl notify 1 5000 "rgb(255 165 0)" "Window Opacity is already at maximum: $NEW_ALPHA"
+            exit 0
+        fi
+        NEW_ALPHA=$(awk -v a="$ALPHA" -v s="$STEP" 'BEGIN {a = a + s; if (a > 1) a = 1; printf "%.1f", a}')
+        ;;
+    "-"|"decrease"|"down")
+        if (( $(echo "$ALPHA <= 0.1" | bc -l) )); then
+            NEW_ALPHA=0.1
+            hyprctl notify 1 5000 "rgb(255 165 0)" "Window Opacity is already at minimum: $NEW_ALPHA"
+            exit 0
+        fi
+        NEW_ALPHA=$(awk -v a="$ALPHA" -v s="$STEP" 'BEGIN {a = a - s; if (a < 0.1) a = 0.1; printf "%.1f", a}')
+        ;;
+    *)
+        echo "Usage: $0 [+|-|increase|decrease|up|down]"
+        exit 1
+        ;;
+esac
+
+hyprctl dispatch setprop "address:$ADDR" alpha $NEW_ALPHA
+hyprctl notify 1 5000 "rgb(40a02b)" "Window Opacity: $NEW_ALPHA"

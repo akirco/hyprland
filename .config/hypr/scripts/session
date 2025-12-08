@@ -1,0 +1,131 @@
+#!/bin/bash
+
+LAYOUT_DIR="$HOME/.config/hypr/layouts"
+mkdir -p "$LAYOUT_DIR"
+
+save_layout() {
+    local name="$1"
+    if [ -z "$name" ]; then
+        name="layout_$(date +%Y%m%d_%H%M%S)"
+    fi
+
+    # 保存工作区信息
+    hyprctl workspaces -j > "$LAYOUT_DIR/${name}_workspaces.json"
+
+    # 保存窗口信息
+    hyprctl clients -j > "$LAYOUT_DIR/${name}_clients.json"
+
+    # 保存当前活动工作区
+    hyprctl activeworkspace -j > "$LAYOUT_DIR/${name}_active.json"
+
+    # 创建索引文件
+    echo "{
+        \"name\": \"$name\",
+        \"timestamp\": \"$(date -Iseconds)\",
+        \"files\": [
+            \"${name}_workspaces.json\",
+            \"${name}_clients.json\",
+            \"${name}_active.json\"
+        ]
+    }" > "$LAYOUT_DIR/${name}.meta.json"
+
+    notify-send -t 2000 "布局保存" "已保存为: $name"
+    echo "布局已保存: $name"
+}
+
+load_layout() {
+    local name="$1"
+
+    if [ ! -f "$LAYOUT_DIR/${name}_clients.json" ]; then
+        echo "布局不存在: $name"
+        return 1
+    fi
+
+    echo "正在加载布局: $name"
+
+    # 解析并恢复窗口位置
+    while read -r line; do
+        address=$(echo "$line" | jq -r '.address')
+        workspace=$(echo "$line" | jq -r '.workspace.id // .workspace')
+        at=$(echo "$line" | jq -r '.at | join(" ")')
+        size=$(echo "$line" | jq -r '.size | join(" ")')
+        floating=$(echo "$line" | jq -r '.floating')
+
+        # 移动窗口到对应工作区
+        hyprctl dispatch movetoworkspacesilent "$workspace" "address:$address"
+
+        # 如果是浮动窗口，恢复位置和大小
+        if [ "$floating" = "true" ]; then
+            hyprctl dispatch movewindowpixel "$at" "address:$address"
+            hyprctl dispatch resizewindowpixel "$size" "address:$address"
+        fi
+
+    done < <(jq -c '.[]' "$LAYOUT_DIR/${name}_clients.json")
+
+    notify-send -t 2000 "布局恢复" "已加载: $name"
+    echo "布局已恢复: $name"
+}
+
+list_layouts() {
+    echo "保存的布局:"
+    echo "------------"
+    for meta in "$LAYOUT_DIR"/*.meta.json; do
+        [ -f "$meta" ] || continue
+        name=$(jq -r '.name' "$meta")
+        timestamp=$(jq -r '.timestamp' "$meta")
+        echo "  $name ($timestamp)"
+    done
+}
+
+delete_layout() {
+    local name="$1"
+
+    if [ ! -f "$LAYOUT_DIR/${name}.meta.json" ]; then
+        echo "布局不存在: $name"
+        return 1
+    fi
+
+    # 删除相关文件
+    rm -f "$LAYOUT_DIR/${name}.meta.json"
+    rm -f "$LAYOUT_DIR/${name}_workspaces.json"
+    rm -f "$LAYOUT_DIR/${name}_clients.json"
+    rm -f "$LAYOUT_DIR/${name}_active.json"
+
+    notify-send -t 2000 "布局删除" "已删除: $name"
+    echo "布局已删除: $name"
+}
+
+# 主逻辑
+case "$1" in
+    save)
+        save_layout "$2"
+        ;;
+    load)
+        if [ -z "$2" ]; then
+            echo "请指定布局名称"
+            exit 1
+        fi
+        load_layout "$2"
+        ;;
+    list)
+        list_layouts
+        ;;
+    delete)
+        if [ -z "$2" ]; then
+            echo "请指定布局名称"
+            exit 1
+        fi
+        delete_layout "$2"
+        ;;
+    *)
+        echo "用法: $0 {save [name]|load <name>|list|delete <name>}"
+        echo ""
+        echo "示例:"
+        echo "  $0 save               # 使用时间戳保存"
+        echo "  $0 save work          # 保存为 'work'"
+        echo "  $0 load work          # 加载 'work' 布局"
+        echo "  $0 list               # 列出所有布局"
+        echo "  $0 delete work        # 删除 'work' 布局"
+        exit 1
+        ;;
+esac

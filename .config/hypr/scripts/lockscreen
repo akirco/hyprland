@@ -12,7 +12,7 @@ swaylock -fFS \
   --hide-keyboard-layout \
   --indicator-caps-lock \
   --color ${bg}E6 \
-  --font 'IosevkaLyteTerm' --font-size 70 \
+  --font 'Hack Nerd Font' --font-size 70 \
   --key-hl-color ${magenta} \
   --caps-lock-key-hl-color ${blue} \
   --bs-hl-color ${red} \

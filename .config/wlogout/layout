@@ -28,3 +28,9 @@
   "action" : "~/.config/wlogout/actions --shutdown",
   "keybind" : "s"
 }
+{
+  "label" : "hibernate",
+  "text" : "Hibernate",
+  "action" : "~/.config/wlogout/actions --hibernate",
+  "keybind" : "h"
+}

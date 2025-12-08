@@ -1,0 +1,299 @@
+#!/bin/bash
+
+# 模式选择：switch（默认）或 move
+MODE="${1:-switch}"
+# 最小化工作区名称（可以修改为你实际使用的工作区名称）
+MINIMIZE_WORKSPACE="min"
+# 获取当前工作区名称
+CURRENT_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.name')
+
+TEMP_WINDOWS="/tmp/hypr_windows_$$.txt"
+TEMP_DISPLAY="/tmp/hypr_display_$$.txt"
+TEMP_ADDR_MAP="/tmp/hypr_addr_map_$$.txt"
+
+cleanup() {
+    rm -f "$TEMP_WINDOWS" "$TEMP_DISPLAY" "$TEMP_ADDR_MAP"
+}
+trap cleanup EXIT
+
+# 显示帮助信息
+show_help() {
+    echo "用法: $0 [模式]"
+    echo "模式:"
+    echo "  switch - 窗口切换模式（默认）"
+    echo "  move   - 从最小化工作区移动窗口到当前工作区"
+    echo ""
+    echo "最小化工作区名称: $MINIMIZE_WORKSPACE"
+    echo "当前工作区: $CURRENT_WORKSPACE"
+    exit 0
+}
+
+# 检查模式参数
+if [ "$MODE" = "--help" ] || [ "$MODE" = "-h" ]; then
+    show_help
+elif [ "$MODE" != "switch" ] && [ "$MODE" != "move" ]; then
+    echo "错误: 无效的模式 '$MODE'，使用 'switch' 或 'move'"
+    echo "使用 $0 --help 查看帮助"
+    exit 1
+fi
+
+# 获取当前聚焦窗口的地址
+get_active_window_address() {
+    hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty'
+}
+
+simplify_class() {
+    local class="$1"
+
+    # 移除常见的应用标识后缀
+    case "$class" in
+        # Edge/Chrome PWA 应用
+        *msedge-*-Default*)
+            echo "msedge"
+            ;;
+        *chrome-*-Default*)
+            echo "chrome"
+            ;;
+        # Firefox 相关
+        *firefox-*)
+            echo "firefox"
+            ;;
+        firefox*)
+            echo "firefox"
+            ;;
+        kitty-*)
+            echo "kitty"
+            ;;
+        alacritty-*)
+            echo "alacritty"
+            ;;
+        jetbrains-*)
+            echo "$class" | sed -E 's/jetbrains-([a-zA-Z]+)-.*/\1/'
+            ;;
+        # 通用处理：移除 UUID/哈希值等后缀
+        *)
+            # 移除常见的后缀模式
+            simplified=$(echo "$class" | sed -E '
+                # 移除浏览器扩展ID模式（32位字母数字）
+                s/-[a-f0-9]{32}-Default$//
+                s/-[a-f0-9]{32}$//
+                # 移除常见的版本号模式
+                s/-[0-9]+\.[0-9]+\.[0-9]+$//
+                s/-[0-9]+$//
+                # 移除进程ID模式
+                s/-[0-9]{4,5}$//
+                # 移除时间戳或随机字符串
+                s/-[a-f0-9]{8,}$//
+                # 移除 "instance" 后缀
+                s/-instance[0-9]*$//
+                # 如果还有多个横杠分隔的部分，只保留第一个
+                s/^([^-]+)-.*/\1/
+            ')
+
+            # 如果没有简化，返回原class
+            if [ -z "$simplified" ] || [ "$simplified" = "$class" ]; then
+                echo "$class"
+            else
+                echo "$simplified"
+            fi
+            ;;
+    esac
+}
+
+# 首字母大写函数
+capitalize_first() {
+    local str="$1"
+    echo "${str^}"
+}
+
+# 获取所有窗口信息
+get_all_windows() {
+    if [ "$MODE" = "move" ]; then
+        # move模式：只显示最小化工作区的窗口
+        hyprctl clients -j | jq -r --arg ws "special:$MINIMIZE_WORKSPACE" \
+            '.[] | select(.workspace.name == $ws) | "\(.address)|\(.class)|\(.title)|\(.workspace.name)"' 2>/dev/null
+    else
+        # switch模式：显示所有窗口
+        hyprctl clients -j | jq -r '.[] | "\(.address)|\(.class)|\(.title)|\(.workspace.name)"' 2>/dev/null
+    fi
+}
+
+get_windows() {
+    local active_addr=""
+
+    # 只有switch模式需要获取当前活跃窗口
+    if [ "$MODE" = "switch" ]; then
+        active_addr=$(get_active_window_address)
+    fi
+
+    # 清空临时文件
+    > "$TEMP_WINDOWS"
+    > "$TEMP_DISPLAY"
+    > "$TEMP_ADDR_MAP"
+
+    # 获取窗口信息
+    get_all_windows > "$TEMP_WINDOWS"
+
+    # 如果没有任何窗口，退出
+    if [ ! -s "$TEMP_WINDOWS" ]; then
+        if [ "$MODE" = "move" ]; then
+            notify-send "窗口管理器" "最小化工作区 '$MINIMIZE_WORKSPACE' 中没有窗口"
+        else
+            notify-send "窗口切换器" "没有找到窗口"
+        fi
+        exit 0
+    fi
+
+    local active_window_found=false
+
+    # switch模式：先处理当前聚焦的窗口，放在第一行
+    if [ "$MODE" = "switch" ] && [ -n "$active_addr" ] && grep -q "^$active_addr|" "$TEMP_WINDOWS"; then
+        active_window_found=true
+        active_line=$(grep "^$active_addr|" "$TEMP_WINDOWS")
+
+        if [ -n "$active_line" ]; then
+            IFS='|' read -r addr class title workspace <<< "$active_line"
+            simple_class=$(simplify_class "$class")
+            capitalized_class=$(capitalize_first "$simple_class")
+
+            if [ ${#title} -gt 70 ]; then
+                title="${title:0:67}..."
+            fi
+
+            # 添加箭头标记表示当前聚焦窗口
+            echo "❯ [$workspace] $capitalized_class - $title" >> "$TEMP_DISPLAY"
+            echo "$addr" >> "$TEMP_ADDR_MAP"
+
+            # 从TEMP_WINDOWS中移除已处理的当前聚焦窗口
+            grep -v "^$active_addr|" "$TEMP_WINDOWS" > "${TEMP_WINDOWS}.tmp"
+            mv "${TEMP_WINDOWS}.tmp" "$TEMP_WINDOWS"
+        fi
+    fi
+
+    # 处理其他窗口
+    while IFS='|' read -r addr class title workspace; do
+        simple_class=$(simplify_class "$class")
+        capitalized_class=$(capitalize_first "$simple_class")
+
+        if [ ${#title} -gt 70 ]; then
+            title="${title:0:67}..."
+        fi
+
+        # move模式：显示不同前缀
+        if [ "$MODE" = "move" ]; then
+            echo "↗ [$workspace] $capitalized_class - $title" >> "$TEMP_DISPLAY"
+        elif [ "$active_window_found" = true ] && [ "$addr" = "$active_addr" ]; then
+            continue  # 已经处理过当前窗口，跳过
+        else
+            echo "    [$workspace] $capitalized_class - $title" >> "$TEMP_DISPLAY"
+        fi
+
+        echo "$addr" >> "$TEMP_ADDR_MAP"
+    done < "$TEMP_WINDOWS"
+}
+
+# 显示 wofi 菜单
+show_menu() {
+    local prompt_text=""
+
+    if [ "$MODE" = "move" ]; then
+        prompt_text="从 '$MINIMIZE_WORKSPACE' 恢复窗口 → $CURRENT_WORKSPACE"
+    else
+        prompt_text="切换窗口"
+    fi
+
+    cat "$TEMP_DISPLAY" | wofi \
+        --show dmenu \
+        --prompt "$prompt_text: " \
+        --insensitive \
+        --allow-markup \
+        --width 50% \
+        --height 35% \
+        --location center \
+        --hide-scroll \
+        --cache-file /dev/null \
+        --matching fuzzy
+}
+
+# 聚焦窗口函数
+focus_window() {
+    local addr="$1"
+
+    # 确保地址格式正确
+    if [[ ! "$addr" =~ ^0x ]]; then
+        addr="0x$addr"
+    fi
+
+    # 聚焦窗口
+    hyprctl dispatch focuswindow "address:$addr" > /dev/null 2>&1
+    return $?
+}
+
+# 移动窗口到当前工作区并聚焦
+move_window_to_current() {
+    local addr="$1"
+
+    # 确保地址格式正确
+    if [[ ! "$addr" =~ ^0x ]]; then
+        addr="0x$addr"
+    fi
+
+    echo "移动窗口 $addr 从 '$MINIMIZE_WORKSPACE' 到 '$CURRENT_WORKSPACE'..." >> /tmp/hypr_move_debug.log
+
+    # 将窗口移动到当前工作区
+    hyprctl dispatch movetoworkspace "$CURRENT_WORKSPACE,address:$addr" > /dev/null 2>&1
+
+    # 等待一小段时间让窗口移动完成
+    sleep 0.1
+
+    # 聚焦窗口
+    hyprctl dispatch focuswindow "address:$addr" > /dev/null 2>&1
+
+    return $?
+}
+
+# 主函数
+main() {
+    get_windows
+
+    if [ ! -s "$TEMP_DISPLAY" ]; then
+        exit 0
+    fi
+
+    selected=$(show_menu)
+
+    if [ -n "$selected" ]; then
+        # 使用行号直接匹配
+        line_num=0
+        while read -r line; do
+            ((line_num++))
+            # 去除可能的空白字符后比较
+            clean_line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            clean_selected=$(echo "$selected" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+            if [ "$clean_line" = "$clean_selected" ]; then
+                # 获取对应行号的地址
+                selected_addr=$(sed -n "${line_num}p" "$TEMP_ADDR_MAP" | tr -d '\n')
+
+                if [ -n "$selected_addr" ]; then
+                    if [ "$MODE" = "move" ]; then
+                        # move模式：移动窗口到当前工作区并聚焦
+                        move_window_to_current "$selected_addr"
+
+                        if [ $? -eq 0 ]; then
+                            notify-send "窗口管理器" "已恢复窗口到工作区 '$CURRENT_WORKSPACE'"
+                        else
+                            notify-send "窗口管理器" "恢复窗口失败" -u critical
+                        fi
+                    else
+                        # switch模式：直接聚焦窗口
+                        focus_window "$selected_addr"
+                    fi
+                fi
+                break
+            fi
+        done < "$TEMP_DISPLAY"
+    fi
+}
+
+main

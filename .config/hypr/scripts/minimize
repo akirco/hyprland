@@ -1,0 +1,30 @@
+#!/bin/bash
+
+MINIMIZE_WORKSPACE="min"
+
+active_window=$(hyprctl activewindow -j)
+if [ -z "$active_window" ]; then
+    notify-send "窗口管理器" "没有活跃窗口"
+    exit 0
+fi
+
+window_addr=$(echo "$active_window" | jq -r '.address')
+current_ws=$(echo "$active_window" | jq -r '.workspace.name')
+
+if [ "$current_ws" = "$MINIMIZE_WORKSPACE" ]; then
+    notify-send "窗口管理器" "窗口已在最小化工作区"
+    exit 0
+fi
+
+window_title=$(echo "$active_window" | jq -r '.title')
+if [ ${#window_title} -gt 30 ]; then
+    window_title="${window_title:0:27}..."
+fi
+
+hyprctl dispatch movetoworkspacesilent "special:$MINIMIZE_WORKSPACE,address:$window_addr" > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    notify-send "窗口管理器" "已最小化: $window_title"
+else
+    notify-send "窗口管理器" "最小化失败" -u critical
+fi

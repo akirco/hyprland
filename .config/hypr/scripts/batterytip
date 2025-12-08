@@ -1,0 +1,173 @@
+#!/bin/bash
+# battery-monitor.sh - Monitor battery level and alert when below 15%
+
+# 配置文件
+CONFIG_DIR="$HOME/.config/battery-monitor"
+LOCK_FILE="$CONFIG_DIR/.lock"
+LOG_FILE="$CONFIG_DIR/battery-monitor.log"
+ALERT_HISTORY_FILE="$CONFIG_DIR/alert_history"
+
+# 默认设置
+THRESHOLD=20
+CHECK_INTERVAL=60  # 检查间隔（秒）
+ALERT_COOLDOWN=300 # 提醒冷却时间（秒）
+
+# 创建配置目录
+mkdir -p "$CONFIG_DIR"
+
+# 日志函数
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+# 检查必要工具
+check_deps() {
+    if ! command -v acpi &> /dev/null; then
+        echo "Error: Please install acpi"
+        echo "Arch Linux: sudo pacman -S acpi"
+        echo "Ubuntu/Debian: sudo apt install acpi"
+        echo "Fedora: sudo dnf install acpi"
+        exit 1
+    fi
+    
+    if ! command -v yad &> /dev/null; then
+        echo "Error: Please install yad"
+        echo "Arch Linux: sudo pacman -S yad"
+        echo "Ubuntu/Debian: sudo apt install yad"
+        exit 1
+    fi
+}
+
+# 单实例检查 - 使用文件锁
+check_instance() {
+    # 尝试获取文件锁
+    exec 200>"$LOCK_FILE"
+    if ! flock -n 200; then
+        echo "Battery monitor is already running"
+        log_message "Another instance tried to start but exited (already running)"
+        exit 0  # 静默退出，不显示错误
+    fi
+    
+    # 将PID写入锁文件
+    echo $$ > "$LOCK_FILE"
+    
+    # 设置退出时清理
+    trap 'cleanup' EXIT
+}
+
+# 清理函数
+cleanup() {
+    # 删除锁文件
+    rm -f "$LOCK_FILE"
+    # 关闭文件描述符
+    exec 200>&-
+    log_message "Battery monitor stopped"
+}
+
+# 获取电池信息
+get_battery_info() {
+    local acpi_output
+    acpi_output=$(acpi -b 2>/dev/null)
+    
+    if [[ -z "$acpi_output" ]]; then
+        log_message "Cannot get battery information"
+        return 1
+    fi
+    
+    # 解析 acpi 输出
+    local percentage status
+    percentage=$(echo "$acpi_output" | grep -oE "[0-9]+%" | head -1 | tr -d '%')
+    status=$(echo "$acpi_output" | grep -oE "(Discharging|Charging|Full|Unknown)" | head -1)
+    
+    echo "$percentage $status"
+}
+
+# 显示提醒
+show_alert() {
+    local percentage=$1
+    
+    # 播放警告声音（可选）
+    if command -v paplay &> /dev/null; then
+        paplay /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga 2>/dev/null &
+    fi
+    
+    # 使用 yad 显示警告对话框
+    yad --title="Battery Low Warning" \
+        --width=400 \
+        --height=200 \
+        --center \
+        --text-align=center \
+        --text="<span size='x-large' weight='bold'>⚠ BATTERY LOW</span>\n\n<span size='large'>${percentage}% remaining</span>\n\nConnect charger immediately!" \
+        --button="OK":0 &
+    
+    # 记录警告到历史文件
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Battery low: ${percentage}%" >> "$ALERT_HISTORY_FILE"
+    log_message "Low battery alert shown: ${percentage}%"
+}
+
+# 检查是否需要显示警告
+should_alert() {
+    local percentage=$1
+    local status=$2
+    local current_time=$(date +%s)
+    
+    # 检查条件：电量低于阈值且正在放电
+    if [[ -n "$percentage" && "$percentage" -lt $THRESHOLD ]] && [[ "$status" == "Discharging" ]]; then
+        # 检查冷却时间
+        if [[ -f "$ALERT_HISTORY_FILE" ]]; then
+            local last_alert_time
+            last_alert_time=$(tail -1 "$ALERT_HISTORY_FILE" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}')
+            
+            if [[ -n "$last_alert_time" ]]; then
+                local last_alert_epoch
+                last_alert_epoch=$(date -d "$last_alert_time" +%s 2>/dev/null)
+                
+                if [[ -n "$last_alert_epoch" ]] && [[ $((current_time - last_alert_epoch)) -lt $ALERT_COOLDOWN ]]; then
+                    return 1  # 还在冷却时间内，不显示
+                fi
+            fi
+        fi
+        return 0  # 需要显示警告
+    fi
+    
+    return 1  # 不需要显示警告
+}
+
+# 主监控循环
+monitor_battery() {
+    log_message "Battery monitor started (threshold: ${THRESHOLD}%, interval: ${CHECK_INTERVAL}s)"
+    
+    while true; do
+        # 获取电池信息
+        local battery_info
+        battery_info=$(get_battery_info)
+        
+        if [[ -n "$battery_info" ]]; then
+            local percentage status
+            percentage=$(echo "$battery_info" | awk '{print $1}')
+            status=$(echo "$battery_info" | awk '{print $2}')
+            
+            # 检查是否需要显示警告
+            if should_alert "$percentage" "$status"; then
+                log_message "Battery low detected: ${percentage}% (${status})"
+                show_alert "$percentage"
+            fi
+            
+            # 记录状态（可选，调试用）
+            # log_message "Battery: ${percentage}% (${status})"
+        fi
+        
+        # 休眠指定时间后再次检查
+        sleep "$CHECK_INTERVAL"
+    done
+}
+
+# 主函数
+main() {
+    check_deps
+    check_instance
+    monitor_battery
+}
+
+# 运行主函数
+main

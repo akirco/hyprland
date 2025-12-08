@@ -9,15 +9,15 @@ on-touch=dismiss
 on-notify=exec mpv /usr/share/sounds/freedesktop/stereo/message.oga
 
 # STYLE OPTIONS
-font=monospace 14
-width=300
-height=100
+font='Noto Sans CJK SC' 14
+width=350
+height=150
 margin=10
 padding=15
-border-size=2
-border-radius=10
+border-size=0
+border-radius=18
 icons=1
-max-icon-size=48
+max-icon-size=32
 icon-location=left
 markup=1
 actions=1
@@ -28,9 +28,9 @@ ignore-timeout=0
 max-visible=5
 layer=overlay
 
-background-color=#1e1e2e
+background-color=#101010C0
 text-color=#cdd6f4
-border-color=#89b4fa
+border-color=#000000
 progress-color=over #313244
 
 # background-color=#1e1e2e
@@ -39,19 +39,19 @@ progress-color=over #313244
 # progress-color=over #89b4fa
 
 [urgency=low]
-border-color=#b7abcf
+border-color=#000000
 default-timeout=2000
 
 [urgency=normal]
-border-color=#b7abcf
+border-color=#000000
 default-timeout=5000
 
 [urgency=high]
-border-color=#f38ba8
+border-color=#000000
 text-color=#f38ba8
 default-timeout=0
 
 [category=mpd]
-border-color=#b7abcf
+border-color=#000000
 default-timeout=2000
 group-by=category

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+hexinput=$(echo "$1" | tr '[:lower:]' '[:upper:]') # Convert to uppercase
+
+# Extract R, G, B components
+r_hex=${hexinput:0:2}
+g_hex=${hexinput:2:2}
+b_hex=${hexinput:4:2}
+
+# Convert hex to decimal using 'bc'
+r_dec=$(echo "ibase=16; $r_hex" | bc)
+g_dec=$(echo "ibase=16; $g_hex" | bc)
+b_dec=$(echo "ibase=16; $b_hex" | bc)
+
+echo "($r_dec, $g_dec, $b_dec)"

@@ -3,22 +3,20 @@
 * {
   border: none;
   border-radius: 0;
-  font-family: "JetBrainsMono Nerd Font";
+  font-family: "Hack Nerd Font";
   font-weight: bold;
-  font-size: 20px;
-  min-height: 0;
+  font-size: 18px;
 }
 
 /* --------------------------------- waybar --------------------------------- */
 
 window#waybar {
-  box-shadow: 2px 2px 3px #cdd6f4;
   background: transparent;
 }
 
 tooltip {
-  background: rgba(51, 55, 74, 0.8);
-  border-radius: 10px;
+  background: rgba(15, 13, 18, 0.85);
+  border-radius: 4px;
 }
 
 /* ------------------------------ left modules ------------------------------ */
@@ -27,11 +25,11 @@ tooltip {
 /*                                    clock                                   */
 /* -------------------------------------------------------------------------- */
 #clock {
-  color: #ffffff;
-  background: #7891b9;
-  border-radius: 8px;
+  color: #f5c359;
+  background: rgba(15, 13, 18, 0.85);
+  border-radius: 4px;
   padding: 2px 10px 2px 10px;
-  margin-top: 10px;
+  margin-top: 4px;
   margin-left: 10px;
 }
 
@@ -39,43 +37,49 @@ tooltip {
 /*                                  workspace                                 */
 /* -------------------------------------------------------------------------- */
 
-
 #workspaces {
   margin-left: 20px;
-  margin-top: 10px;
+  background: rgba(26, 26, 35, 0.85);
+  border-radius: 4px;
+  margin-top: 4px;
+  padding: 4px;
 }
 
 #workspaces button {
   color: #ffffff;
-  background: #1A1A23;
-  margin-left: 5px;
-  border-radius: 8px;
+  border-radius: 4px;
+  margin: 4px;
+}
+
+#workspaces button.special {
+  background: rgba(26, 26, 35, 0.85);
+  color: #1ae58a;
 }
 
 #workspaces button.active {
-  background: #9E83D0;
-  color: #ffffff;
+  color: #1ae58a;
+  background: rgba(26, 26, 35, 1);
+  box-shadow: inset 0 -2px #1ae58a;
 }
 
 #workspaces button:hover {
-    background: #11111b;
-    color: #cdd6f4;
-}
-
-#workspaces button:hover {
-  background: #a6e3a1;
+  background: #b4befe;
+  color: #000000;
 }
 
 /* ------------------------------ center module ----------------------------- */
 
 #window {
-  color: #ffffff;
-  background: #51a0a8;
-  border-radius: 8px;
+  color: #5b7ded;
+  background: rgba(15, 13, 18, 0.85);
+  border-radius: 4px;
+  margin-top: 4px;
+  margin-right: 10px;
   padding: 2px 10px 2px 10px;
-  margin-top: 10px;
-  margin-left: 20px;
-  margin-right: 20px;
+}
+
+window#waybar.empty #window {
+  background-color: transparent;
 }
 
 /* ------------------------------ right module ------------------------------ */
@@ -89,72 +93,113 @@ tooltip {
 #pulseaudio,
 #pulseaudio.microphone,
 #custom-recorder,
-#tray{
-  border-radius: 8px;
+#tray {
+  border-radius: 4px;
   padding: 2px 10px 2px 10px;
   color: white;
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 #cpu {
-  background: #fabd2d;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #f9c74f;
 }
 
 #memory {
-  background: #fabd2d;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #f9c74f;
 }
 
 #temperature {
-  background: #83a598;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #97cd23;
 }
 
 #battery {
-  background: #83a598;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #19ef8f;
+}
+
+#battery.charging {
+  color: #90caf9; /* 浅蓝色 */
+}
+
+/* 电量高于 95% (good) */
+#battery.good {
+  color: #4caf50; /* 绿色 */
+}
+
+/* 电量低于 30% (warning) */
+#battery.warning {
+  color: #ffeb3b; /* 黄色 */
+}
+
+/* 电量低于 20% (critical) */
+#battery.critical {
+  color: #f44336; /* 红色 */
+  animation: blink 1s steps(5, start) infinite;
 }
 
 #network {
-  background: #eba0ac;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #0f69de;
 }
 
 #bluetooth {
-  background: #eba0ac;
-
-
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #0f69de;
+}
+
+#bluetooth.connected {
+  background: rgba(15, 13, 18, 0.85);
+  margin-right: 10px;
+  color: #047af8;
 }
 
 #backlight {
-  background: #a6e3a1;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #f58686;
 }
 
 #pulseaudio {
-  background: #d4aff9;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #984df8;
 }
 
 #pulseaudio.microphone {
-  background: #d4aff9;
+  background: rgba(15, 13, 18, 0.85);
   margin-right: 10px;
+  color: #984df8;
 }
 
-#custom-recorder{
+#custom-recorder {
   margin-right: 10px;
-  background: #d4aff9;
+  background: rgba(15, 13, 18, 0.85);
   padding-left: 10px;
   padding-right: 10px;
+  color: #d37576;
 }
-#custom-recorder.recording{
+#custom-recorder.recording {
   margin-right: 10px;
-  background: #ec640a;
+  animation: blink 1s infinite;
 }
 
 #tray {
   margin-right: 10px;
-  background: #89b4fa;
+  background: rgba(15, 13, 18, 0.85);
+  color: #e96899;
+}
+
+@keyframes blink {
+  to {
+    color: #bb2326;
+  }
 }

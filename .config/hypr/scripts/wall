@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# Wallpaper changer script for Sway/Wayland
+# Features: error handling, image format filtering, process management
+
+set -euo pipefail
+
+# Configuration
+WALLPAPER_DIR="${WALLPAPER_DIR:-$HOME/Pictures/wallpapers}"
+PID_FILE="${XDG_RUNTIME_DIR:-/tmp}/swaybg.pid"
+LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/swaybg.log"
+IMAGE_EXTS=("jpg" "jpeg" "png" "gif" "bmp" "tiff" "webp" "svg")
+SWAYBG_OPTS=("-m" "fill")  # Additional options for swaybg
+
+# Create log directory if it doesn't exist
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Logging function
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+
+# Check if swaybg is available
+if ! command -v swaybg &> /dev/null; then
+    echo "Error: swaybg is not installed or not in PATH" >&2
+    log "ERROR: swaybg not found"
+    exit 1
+fi
+
+# Check if wallpaper directory exists
+if [[ ! -d "$WALLPAPER_DIR" ]]; then
+    echo "Error: Wallpaper directory '$WALLPAPER_DIR' does not exist" >&2
+    log "ERROR: Directory $WALLPAPER_DIR not found"
+    exit 1
+fi
+
+# Build find command with image extensions
+find_args=("$WALLPAPER_DIR" -type f)
+if (( ${#IMAGE_EXTS[@]} > 0 )); then
+    find_args+=("(")
+    for ext in "${IMAGE_EXTS[@]}"; do
+        find_args+=(-iname "*.$ext" -o)
+    done
+    # Remove the last '-o' and close parenthesis
+    unset 'find_args[${#find_args[@]}-1]'
+    find_args+=(")")
+fi
+
+# Find all image files
+mapfile -t wallpapers < <(find "${find_args[@]}" 2>/dev/null)
+
+# Check if any wallpapers were found
+if [[ ${#wallpapers[@]} -eq 0 ]]; then
+    echo "Error: No image files found in '$WALLPAPER_DIR'" >&2
+    echo "Supported extensions: ${IMAGE_EXTS[*]}" >&2
+    log "ERROR: No images found in $WALLPAPER_DIR"
+    exit 1
+fi
+
+# Randomly select a wallpaper
+NEW_WALLPAPER=$(printf "%s\n" "${wallpapers[@]}" | shuf -n1)
+
+log "Selected wallpaper: $NEW_WALLPAPER"
+
+# Kill previous swaybg instance if PID file exists
+if [[ -f "$PID_FILE" ]]; then
+    OLD_PID=$(cat "$PID_FILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        log "Killing previous swaybg instance (PID: $OLD_PID)"
+        kill "$OLD_PID" 2>/dev/null
+        # Wait for process to terminate
+        sleep 0.1
+        # Force kill if still running
+        if kill -0 "$OLD_PID" 2>/dev/null; then
+            kill -9 "$OLD_PID" 2>/dev/null
+            log "Force killed previous instance"
+        fi
+    fi
+    rm -f "$PID_FILE"
+fi
+
+# Start new swaybg instance
+log "Starting new swaybg instance"
+swaybg -i "$NEW_WALLPAPER" "${SWAYBG_OPTS[@]}" &
+NEW_PID=$!
+
+# Save PID to file
+echo "$NEW_PID" > "$PID_FILE"
+log "New swaybg PID: $NEW_PID"
+
+# Optional: Notify via desktop notification
+if command -v notify-send &> /dev/null; then
+    notify-send -t 2000 "Wallpaper Changed" \
+        "$(basename "$NEW_WALLPAPER")" \
+        --icon=preferences-desktop-wallpaper 2>/dev/null || true
+fi
+
+# Optional: Set wallpaper for other applications
+# Uncomment if you want to use the same wallpaper in other environments
+
+# For feh (X11):
+# if command -v feh &> /dev/null && [[ -n $DISPLAY ]]; then
+#     feh --bg-fill "$NEW_WALLPAPER" 2>/dev/null || true
+# fi
+
+# For GNOME/GDM:
+# if command -v gsettings &> /dev/null; then
+#     gsettings set org.gnome.desktop.background picture-uri "file://$NEW_WALLPAPER" 2>/dev/null || true
+# fi
+
+log "Wallpaper change completed successfully"
+echo "Wallpaper changed to: $(basename "$NEW_WALLPAPER")"

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+PID_FILE="/tmp/miniserve-ui.pid"
+PORT=1235
+DIR="$HOME/.config/mihomo/ui"
+
+if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
+    PID=$(cat "$PID_FILE")
+    kill $PID
+    rm -f "$PID_FILE"
+    echo "miniserve 已停止 (PID: $PID)"
+    hyprctl notify -1 3000 "0xff0000" "Miniserve 已停止" "端口: $PORT"
+else
+    if [ ! -d "$DIR" ]; then
+        hyprctl notify -1 5000 "0xff0000" "错误" "目录不存在: $DIR"
+        exit 1
+    fi
+    
+    miniserve "$DIR" --index "index.html" -p $PORT &
+    echo $! > "$PID_FILE"
+    
+    echo "miniserve 已启动 (PID: $!, 端口: $PORT)"
+    hyprctl notify -1 3000 "0x00ff00" "Miniserve 已启动" "端口: $PORT\n本地: http://localhost:$PORT"
+fi
