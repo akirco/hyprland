@@ -1,172 +1,173 @@
 #!/usr/bin/env bash
 
 pidf="$HOME/Videos/Screencasts/process.pid"
-WF_RECORDER_OPTS=""
+WF_RECORDER_OPTS="--codec hevc_nvenc"
 VIDEOEXT="mkv"
 
 mkdir -p "$HOME/Videos/Screencasts"
 
 # 格式化时间函数
 format_duration() {
-    local seconds=$1
-    local hours=$((seconds / 3600))
-    local minutes=$(( (seconds % 3600) / 60 ))
-    local secs=$((seconds % 60))
+  local seconds=$1
+  local hours=$((seconds / 3600))
+  local minutes=$(((seconds % 3600) / 60))
+  local secs=$((seconds % 60))
 
-    if [ $hours -gt 0 ]; then
-        printf "%02d:%02d:%02d" $hours $minutes $secs
-    else
-        printf "%02d:%02d" $minutes $secs
-    fi
+  if [ $hours -gt 0 ]; then
+    printf "%02d:%02d:%02d" $hours $minutes $secs
+  else
+    printf "%02d:%02d" $minutes $secs
+  fi
 }
 
 if [ "$1" == "status" ]; then
-    if [ -f "$pidf" ]; then
-        pid=$(head -n 1 "$pidf" 2>/dev/null)
-        vidf=$(sed -n '2p' "$pidf" 2>/dev/null)
-        logf=$(sed -n '3p' "$pidf" 2>/dev/null)
-        start_time=$(sed -n '4p' "$pidf" 2>/dev/null)
+  if [ -f "$pidf" ]; then
+    pid=$(head -n 1 "$pidf" 2>/dev/null)
+    vidf=$(sed -n '2p' "$pidf" 2>/dev/null)
+    logf=$(sed -n '3p' "$pidf" 2>/dev/null)
+    start_time=$(sed -n '4p' "$pidf" 2>/dev/null)
 
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            # 计算录制时长
-            duration=""
-            if [ -n "$start_time" ]; then
-                current_time=$(date +%s)
-                elapsed=$((current_time - start_time))
-                duration=$(format_duration $elapsed)
-            fi
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      # 计算录制时长
+      duration=""
+      if [ -n "$start_time" ]; then
+        current_time=$(date +%s)
+        elapsed=$((current_time - start_time))
+        duration=$(format_duration $elapsed)
+      fi
 
-            # 获取文件大小（如果文件存在）
-            file_size=""
-            if [ -f "$vidf" ]; then
-                size_bytes=$(stat -c%s "$vidf" 2>/dev/null || stat -f%z "$vidf" 2>/dev/null)
-                if [ -n "$size_bytes" ]; then
-                    if [ $size_bytes -ge 1073741824 ]; then
-                        # GB
-                        file_size=$(printf "%.1fG" $(echo "$size_bytes / 1073741824" | bc -l))
-                    elif [ $size_bytes -ge 1048576 ]; then
-                        # MB
-                        file_size=$(printf "%.1fM" $(echo "$size_bytes / 1048576" | bc -l))
-                    elif [ $size_bytes -ge 1024 ]; then
-                        # KB
-                        file_size=$(printf "%.1fK" $(echo "$size_bytes / 1024" | bc -l))
-                    else
-                        file_size="${size_bytes}B"
-                    fi
-                fi
-            fi
-
-            # 构建 tooltip 信息
-            tooltip="Recording\nPID: $pid\nSave to: $vidf\nLog to: $logf"
-            if [ -n "$duration" ]; then
-                tooltip="${tooltip}\nDuration: $duration"
-            fi
-            if [ -n "$file_size" ]; then
-                tooltip="${tooltip}\nSize: $file_size"
-            fi
-
-            # 输出 JSON 格式（带持续时间显示）
-            if [ -n "$duration" ]; then
-                echo "{\"text\":\"  $duration\",\"class\":\"recording\",\"tooltip\":\"$tooltip\"}"
-            else
-                echo "{\"text\":\"  \",\"class\":\"recording\",\"tooltip\":\"$tooltip\"}"
-            fi
-        else
-            rm -f "$pidf"
-            echo '{"text":"   ","tooltip":"Stopped"}'
+      # 获取文件大小（如果文件存在）
+      file_size=""
+      if [ -f "$vidf" ]; then
+        size_bytes=$(stat -c%s "$vidf" 2>/dev/null || stat -f%z "$vidf" 2>/dev/null)
+        if [ -n "$size_bytes" ]; then
+          if [ $size_bytes -ge 1073741824 ]; then
+            # GB
+            file_size=$(printf "%.1fG" $(echo "$size_bytes / 1073741824" | bc -l))
+          elif [ $size_bytes -ge 1048576 ]; then
+            # MB
+            file_size=$(printf "%.1fM" $(echo "$size_bytes / 1048576" | bc -l))
+          elif [ $size_bytes -ge 1024 ]; then
+            # KB
+            file_size=$(printf "%.1fK" $(echo "$size_bytes / 1024" | bc -l))
+          else
+            file_size="${size_bytes}B"
+          fi
         fi
+      fi
+
+      # 构建 tooltip 信息
+      tooltip="Recording\nPID: $pid\nSave to: $vidf\nLog to: $logf"
+      if [ -n "$duration" ]; then
+        tooltip="${tooltip}\nDuration: $duration"
+      fi
+      if [ -n "$file_size" ]; then
+        tooltip="${tooltip}\nSize: $file_size"
+      fi
+
+      # 输出 JSON 格式（带持续时间显示）
+      if [ -n "$duration" ]; then
+        echo "{\"text\":\"  $duration\",\"class\":\"recording\",\"tooltip\":\"$tooltip\"}"
+      else
+        echo "{\"text\":\"  \",\"class\":\"recording\",\"tooltip\":\"$tooltip\"}"
+      fi
     else
-        echo '{"text":"   ","tooltip":"Stopped"}'
+      rm -f "$pidf"
+      echo '{"text":"   ","tooltip":"Stopped"}'
     fi
-    exit 0
+  else
+    echo '{"text":"   ","tooltip":"Stopped"}'
+  fi
+  exit 0
 
 elif [ "$1" == "toggle" ]; then
-    if [ -f "$pidf" ]; then
-        pid=$(head -n 1 "$pidf" 2>/dev/null)
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            kill -2 "$pid" 2>/dev/null
-            for i in {1..20}; do
-                if ! kill -0 "$pid" 2>/dev/null; then
-                    break
-                fi
-                sleep 0.1
-            done
-
-            if kill -0 "$pid" 2>/dev/null; then
-                kill -15 "$pid" 2>/dev/null
-                sleep 0.5
-            fi
-
-            if kill -0 "$pid" 2>/dev/null; then
-                kill -9 "$pid" 2>/dev/null
-            fi
-
-            wait "$pid" 2>/dev/null
-        fi
-        hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STOPPED]"
-
-        rm -f "$pidf" && exit 5
-    else
-        if [ -z "$2" ]; then
-            echo "Usage: $0 toggle [fullscreen|region]"
-            exit 1
-        fi
-
-        bf="$HOME/Videos/Screencasts/$(date +'%Y%m%dT%H%M%S')"
-        vidf="$bf.$VIDEOEXT"
-        logf="$bf.log"
-
-        if [ "$2" == "fullscreen" ]; then
-            hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STARTED]"
-            wf-recorder $WF_RECORDER_OPTS -a -f "$vidf" 1>"$logf" 2>&1 &
-            pid=$!
-        elif [ "$2" == "region" ]; then
-            sleep 1
-            region=$(slurp 2>/dev/null || echo "")
-            if [ -z "$region" ]; then
-                echo "cancelled region selection"
-                exit 1
-            fi
-            hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STARTED]"
-            wf-recorder $WF_RECORDER_OPTS -a -g "$region" -f "$vidf" 1>"$logf" 2>&1 &
-            pid=$!
-        else
-            echo "param '$2' is invalid，please use 'fullscreen' or 'region'"
-            exit 1
-        fi
-
-        sleep 0.5
-
+  if [ -f "$pidf" ]; then
+    pid=$(head -n 1 "$pidf" 2>/dev/null)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      kill -2 "$pid" 2>/dev/null
+      for i in {1..20}; do
         if ! kill -0 "$pid" 2>/dev/null; then
-            echo "start wf-recorder failed"
-
-            if [ -f "$logf" ]; then
-                echo "ERROR:"
-                tail -n 5 "$logf"
-            fi
-
-            rm -f "$logf" "$vidf" 2>/dev/null
-            exit 1
+          break
         fi
+        sleep 0.1
+      done
 
-        # 保存开始时间戳（第4行）
-        start_time=$(date +%s)
-        printf "%d\n%s\n%s\n%d" "$pid" "$vidf" "$logf" "$start_time" >"$pidf"
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -15 "$pid" 2>/dev/null
+        sleep 0.5
+      fi
 
-        if [ $? -eq 0 ]; then
-            disown "$pid" >/dev/null && exit 5
-        else
-            echo "failed to write PID file: $pidf"
-            kill -9 "$pid" 2>/dev/null
-            exit 1
-        fi
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null
+      fi
+
+      wait "$pid" 2>/dev/null
     fi
-    exit 0
+    hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STOPPED]"
+
+    rm -f "$pidf" && exit 5
+  else
+    if [ -z "$2" ]; then
+      echo "Usage: $0 toggle [fullscreen|region]"
+      exit 1
+    fi
+
+    bf="$HOME/Videos/Screencasts/$(date +'%Y%m%dT%H%M%S')"
+    vidf="$bf.$VIDEOEXT"
+    logf="$bf.log"
+
+    if [ "$2" == "fullscreen" ]; then
+      hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STARTED]"
+      wf-recorder $WF_RECORDER_OPTS -a -f "$vidf" 1>"$logf" 2>&1 &
+      pid=$!
+    elif [ "$2" == "region" ]; then
+      sleep 1
+      region=$(slurp 2>/dev/null || echo "")
+      if [ -z "$region" ]; then
+        echo "cancelled region selection"
+        exit 1
+      fi
+      hyprctl notify 1 5000 "rgb(40a02b)" "Recording [STARTED]"
+      wf-recorder $WF_RECORDER_OPTS -a -g "$region" -f "$vidf" 1>"$logf" 2>&1 &
+      pid=$!
+    else
+      echo "param '$2' is invalid，please use 'fullscreen' or 'region'"
+      exit 1
+    fi
+
+    sleep 0.5
+
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "start wf-recorder failed"
+
+      if [ -f "$logf" ]; then
+        echo "ERROR:"
+        tail -n 5 "$logf"
+      fi
+
+      rm -f "$logf" "$vidf" 2>/dev/null
+      exit 1
+    fi
+
+    # 保存开始时间戳（第4行）
+    start_time=$(date +%s)
+    printf "%d\n%s\n%s\n%d" "$pid" "$vidf" "$logf" "$start_time" >"$pidf"
+
+    if [ $? -eq 0 ]; then
+      disown "$pid" >/dev/null && exit 5
+    else
+      echo "failed to write PID file: $pidf"
+      kill -9 "$pid" 2>/dev/null
+      exit 1
+    fi
+  fi
+  exit 0
 
 else
-    echo "Usage:"
-    echo "  $0 status              # check recording status"
-    echo "  $0 toggle fullscreen   # toggle fullscreen recording"
-    echo "  $0 toggle region       # toggle region recording"
-    exit 1
+  echo "Usage:"
+  echo "  $0 status              # check recording status"
+  echo "  $0 toggle fullscreen   # toggle fullscreen recording"
+  echo "  $0 toggle region       # toggle region recording"
+  exit 1
 fi
+

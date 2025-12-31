@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+ON="{\"text\":\"A\",\"class\":\"capslock-on\"}"
+OFF="{\"text\":\"a\",\"class\":\"capslock-off\"}"
+
+if [[ "$(cat /sys/class/leds/input*::capslock/brightness | head -n 1)" == "1" ]]; then
+  echo "$ON"
+else
+  echo "$OFF"
+fi

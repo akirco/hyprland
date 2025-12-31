@@ -28,7 +28,6 @@ export PATH="/home/neil/.local/share/parm/bin:$PATH"
 # Language-specific settings
 export GO111MODULE=on
 export GOPROXY=https://goproxy.cn,direct
-export OPPER_API_KEY=op-42NQQY4QND74F3781RZC
 
 # ===== ALIASES =====
 
@@ -100,86 +99,86 @@ alias tofish="sudo chsh $USER -s /bin/fish && echo 'Now log out.'"
 # ===== FUNCTIONS =====
 
 unimatrix() {
-  katakana="゠ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ・ーヽヾヿ"
-  command unimatrix -c green  -u $katakana -s 95 "$@"
+    katakana="゠ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶ・ーヽヾヿ"
+    command unimatrix -c green  -u $katakana -s 95 "$@"
 }
 
 ## Archive extraction
 ex() {
-  if [ -f "$1" ]; then
-    case "$1" in
-      *.tar.bz2) tar xjf "$1" ;;
-      *.tar.gz)  tar xzf "$1" ;;
-      *.bz2)     bunzip2 "$1" ;;
-      *.rar)     unrar x "$1" ;;
-      *.gz)      gunzip "$1" ;;
-      *.tar)     tar xf "$1" ;;
-      *.tbz2)    tar xjf "$1" ;;
-      *.tgz)     tar xzf "$1" ;;
-      *.zip)     unzip "$1" ;;
-      *.Z)       uncompress "$1" ;;
-      *.7z)      7z x "$1" ;;
-      *.deb)     ar x "$1" ;;
-      *.tar.xz)  tar xf "$1" ;;
-      *.tar.zst) tar xf "$1" ;;
-      *)         echo "'$1' cannot be extracted via ex()" ;;
-    esac
-  else
-    echo "'$1' is not a valid file"
-  fi
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2) tar xjf "$1" ;;
+            *.tar.gz)  tar xzf "$1" ;;
+            *.bz2)     bunzip2 "$1" ;;
+            *.rar)     unrar x "$1" ;;
+            *.gz)      gunzip "$1" ;;
+            *.tar)     tar xf "$1" ;;
+            *.tbz2)    tar xjf "$1" ;;
+            *.tgz)     tar xzf "$1" ;;
+            *.zip)     unzip "$1" ;;
+            *.Z)       uncompress "$1" ;;
+            *.7z)      7z x "$1" ;;
+            *.deb)     ar x "$1" ;;
+            *.tar.xz)  tar xf "$1" ;;
+            *.tar.zst) tar xf "$1" ;;
+            *)         echo "'$1' cannot be extracted via ex()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
 }
 
 ## Proxy management
 proxy_on() {
-  export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=http://127.0.0.1:7890
+    export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=http://127.0.0.1:7890
 }
 
 proxy_off() {
-  unset all_proxy
+    unset all_proxy
 }
 
 
 ## Package search
 slp() {
-  if [[ -n "$1" ]]; then
-    expac --timefmt='%Y-%m-%d %T' '%l\t%n %v' | sort -h | grep "$1" | bat
-  else
-    echo "search local packages"
-  fi
+    if [[ -n "$1" ]]; then
+        expac --timefmt='%Y-%m-%d %T' '%l\t%n %v' | sort -h | grep "$1" | bat
+    else
+        echo "search local packages"
+    fi
 }
 
 memo() {
-  PID=$(pgrep -x "$1")
-
-  if [ -z "$PID" ]; then
-    echo "Error: Process '$1' not found."
-    return 1 # 使用 return 退出函数
-  fi
-
-  echo "Process Name: $1"
-  echo "PID: $PID"
-
-  RSS_KB=$(awk '/VmRSS/ {print $2}' /proc/$PID/status 2>/dev/null)
-
-  if [ -z "$RSS_KB" ]; then
-    echo "Error: Process '$1' (PID $PID) has exited or its status is unreadable."
-    return 1
-  fi
-
-  RSS_MB=$((RSS_KB / 1024))
-  echo "RSS (Memory Usage): ${RSS_MB} MB"
+    PID=$(pgrep -x "$1")
+    
+    if [ -z "$PID" ]; then
+        echo "Error: Process '$1' not found."
+        return 1 # 使用 return 退出函数
+    fi
+    
+    echo "Process Name: $1"
+    echo "PID: $PID"
+    
+    RSS_KB=$(awk '/VmRSS/ {print $2}' /proc/$PID/status 2>/dev/null)
+    
+    if [ -z "$RSS_KB" ]; then
+        echo "Error: Process '$1' (PID $PID) has exited or its status is unreadable."
+        return 1
+    fi
+    
+    RSS_MB=$((RSS_KB / 1024))
+    echo "RSS (Memory Usage): ${RSS_MB} MB"
 }
 
 pros(){
-  second_choice=$(
-    first_choice=$(eza "$HOME/Projects" --absolute -D | fzf)
-    if [[ -n "$first_choice" ]]; then
-        eza --absolute -D "$first_choice" | fzf
+    second_choice=$(
+        first_choice=$(eza "$HOME/Projects" --absolute -D | fzf)
+        if [[ -n "$first_choice" ]]; then
+            eza --absolute -D "$first_choice" | fzf
+        fi
+    )
+    if [[ -n "$second_choice" ]]; then
+        nvim "$second_choice"
     fi
-  )
-  if [[ -n "$second_choice" ]]; then
-    nvim "$second_choice"
-  fi
 }
 
 # ===== THIRD-PARTY TOOL INITIALIZATION =====
@@ -193,8 +192,8 @@ export NVM_DIR="$HOME/.local/devenv/nvm"
 ## PNPM
 export PNPM_HOME="$HOME/.local/devenv/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
+    *":$PNPM_HOME:"*) ;;
+    *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 
 

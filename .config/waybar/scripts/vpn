@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Mihomo VPN Waybar 模块
+CONFIG_DIR="$HOME/.config/mihomo"
+MIHOMO_CMD="mihomo"
+PID_FILE="/tmp/mihomo.pid"
+
+check_installation() {
+    if ! command -v $MIHOMO_CMD &> /dev/null; then
+        echo '{"text": "VPN: Not Installed", "class": "critical", "tooltip": "Mihomo is not installed"}'
+        exit 1
+    fi
+}
+
+get_status() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p $PID > /dev/null 2>&1; then
+            echo "running"
+        else
+            echo "stopped"
+        fi
+    else
+        echo "stopped"
+    fi
+}
+
+start_vpn() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ! ps -p $PID > /dev/null 2>&1; then
+            rm -f "$PID_FILE"
+        else
+            return 0
+        fi
+    fi
+    
+    $MIHOMO_CMD -d "$CONFIG_DIR" > /dev/null 2>&1 &
+    
+    echo $! > "$PID_FILE"
+}
+
+stop_vpn() {
+    if [ ! -f "$PID_FILE" ]; then
+        return 0
+    fi
+    
+    PID=$(cat "$PID_FILE")
+    
+    if ps -p $PID > /dev/null 2>&1; then
+        kill $PID 2>/dev/null
+        sleep 0.5
+        
+        if ps -p $PID > /dev/null 2>&1; then
+            kill -9 $PID 2>/dev/null
+        fi
+    fi
+    
+    rm -f "$PID_FILE"
+}
+
+toggle_vpn() {
+    status=$(get_status)
+    if [ "$status" = "running" ]; then
+        stop_vpn
+    else
+        start_vpn
+    fi
+}
+
+check_installation
+
+case "$1" in
+    "toggle")
+        toggle_vpn
+        sleep 0.2
+    ;;
+    "stop")
+        stop_vpn
+        sleep 0.2
+    ;;
+esac
+
+status=$(get_status)
+
+case "$status" in
+    "running")
+        echo '{"text": "   ", "class": "running", "tooltip": "Mihomo is running"}'
+    ;;
+    "stopped")
+        echo '{"text": "   ", "class": "stopped", "tooltip": "Mihomo is stopped"}'
+    ;;
+    *)
+        echo '{"text": "  ", "class": "error", "tooltip": "Unable to determine status"}'
+    ;;
+esac

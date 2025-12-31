@@ -29,7 +29,7 @@ Windows
 .config/composer
 .config/dconf
 .config/fcitx
-.config/fcitx5
+# .config/fcitx5
 .config/gh
 .config/git
 .config/go-musicfox/db
@@ -43,7 +43,7 @@ Windows
 .config/gtk-4.0
 .config/ibus
 .config/inkscape
-.config/mpv
+# .config/mpv
 .config/musikcube
 .config/nvim
 .config/nwg-look

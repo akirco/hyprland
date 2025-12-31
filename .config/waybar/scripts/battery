@@ -1,0 +1,30 @@
+#!/bin/bash
+
+
+EVENT_TYPE=$1
+BATTERY_LEVEL=$2
+
+SOUND_CRITICAL="/usr/share/sounds/freedesktop/stereo/dialog-error.oga"
+SOUND_LOW="/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
+SOUND_FULL="/usr/share/sounds/freedesktop/stereo/complete.oga"
+
+case "$EVENT_TYPE" in
+    "warning")
+        notify-send "⚠️ 电池电量低" "电量剩余 $BATTERY_LEVEL%！请尽快连接电源。" -u critical -t 30000
+        # 播放低电量警告音
+        paplay "$SOUND_LOW" &
+    ;;
+    "critical")
+        notify-send "❌ 电池电量极低" "电量剩余 $BATTERY_LEVEL%！即将关机！" -u critical -t 30000
+        paplay "$SOUND_CRITICAL" &
+    ;;
+    "full")
+        notify-send "🔋 充电完成" "电量已充满至 $BATTERY_LEVEL%。可以拔掉电源了。" -u normal
+        paplay "$SOUND_FULL" &
+    ;;
+    *)
+        notify-send "信息" "未知电池事件: $EVENT_TYPE, $BATTERY_LEVEL%" -u low
+    ;;
+esac
+
+exit 0

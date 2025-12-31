@@ -1,0 +1,115 @@
+{
+    "default_path": "/home/neil/.local/bin",
+    "bins": {
+        "/home/neil/.local/bin/ascii-art-generator": {
+            "path": "/home/neil/.local/bin/ascii-art-generator",
+            "remote_name": "ascii-art-generator",
+            "version": "v0.0.10",
+            "hash": "2578aa1bfbeabb8c909d180c9b87fffbcd043463a1b65c6598deb6c339b4e3b4",
+            "url": "https://github.com/judemont/ascii-art-generator",
+            "provider": "github",
+            "package_path": "",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/ascii-image-converter": {
+            "path": "/home/neil/.local/bin/ascii-image-converter",
+            "remote_name": "ascii-image-converter",
+            "version": "v1.13.1",
+            "hash": "c3f52c1a99ad09c787be28d0bf2ac00750575f92a714bfb364235ee0a81761a1",
+            "url": "https://github.com/TheZoraiz/ascii-image-converter",
+            "provider": "github",
+            "package_path": "ascii-image-converter_Linux_amd64_64bit/ascii-image-converter",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/crontab-guru": {
+            "path": "/home/neil/.local/bin/crontab-guru",
+            "remote_name": "crontab-guru",
+            "version": "v1.0.1",
+            "hash": "1c8ad7402e3d9c81e474a6ca4da42e1db982fac53c9f8ec495778b057e65e34d",
+            "url": "github.com/techquestsdev/crontab-guru",
+            "provider": "github",
+            "package_path": "crontab-guru",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/dawn": {
+            "path": "/home/neil/.local/bin/dawn",
+            "remote_name": "dawn",
+            "version": "v0.1.2",
+            "hash": "41c74eaffe9e63da14dc5cbb22c4ad17f36a86919ba451477f82dbcf19a91d4b",
+            "url": "https://github.com/andrewmd5/dawn/releases/tag/v0.1.2",
+            "provider": "github",
+            "package_path": "dawn",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/eget": {
+            "path": "/home/neil/.local/bin/eget",
+            "remote_name": "eget",
+            "version": "v1.3.4",
+            "hash": "35039e7c73c7a4dcb43eeb629d9101ec07cd7f64211ca9bb262de1811e1ca931",
+            "url": "https://github.com/zyedidia/eget",
+            "provider": "github",
+            "package_path": "eget-1.3.4-linux_amd64/eget",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/jiq": {
+            "path": "/home/neil/.local/bin/jiq",
+            "remote_name": "jiq",
+            "version": "v3.7.3",
+            "hash": "ef03fadd1636ca2b76f49e466c2184e87867bb02d328ee759f90972220e445fd",
+            "url": "https://github.com/bellicose100xp/jiq/releases/tag/v3.7.3",
+            "provider": "github",
+            "package_path": "jiq-x86_64-unknown-linux-gnu/jiq",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/qrcp": {
+            "path": "/home/neil/.local/bin/qrcp",
+            "remote_name": "qrcp",
+            "version": "v0.11.6",
+            "hash": "edcd75d50ad913396abc58d4d2a57e609bbafbac123b15de45592dee90b63eb4",
+            "url": "https://github.com/claudiodangelis/qrcp",
+            "provider": "github",
+            "package_path": "qrcp",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/termcast": {
+            "path": "/home/neil/.local/bin/termcast",
+            "remote_name": "termcast",
+            "version": "termcast@1.3.21",
+            "hash": "0049cc314a5658b0c7f29d679826957f9a95e0eb2f4d233314b335622232a96c",
+            "url": "https://github.com/remorses/termcast",
+            "provider": "github",
+            "package_path": "termcast",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/tmlshock": {
+            "path": "/home/neil/.local/bin/tmlshock",
+            "remote_name": "tmlshock",
+            "version": "v1.3.0",
+            "hash": "52dd07e19cf0e2dfc59c3c6cb414bffe443b7bd7fea70f02d96d1d833fd5b10a",
+            "url": "github.com/yorukot/tmlshock",
+            "provider": "github",
+            "package_path": "",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/tpix": {
+            "path": "/home/neil/.local/bin/tpix",
+            "remote_name": "tpix",
+            "version": "v1.0.3",
+            "hash": "2a32bde812bca85321912abb335df999266cd31ff4be949c8ff5bf073867c86c",
+            "url": "github.com/jesvedberg/tpix",
+            "provider": "github",
+            "package_path": "tpix",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/twitter-media-downloader": {
+            "path": "/home/neil/.local/bin/twitter-media-downloader",
+            "remote_name": "twitter-media-downloader",
+            "version": "v1.14.2",
+            "hash": "4f93f230a46e08ed0204a3fd85a36473f3023c19a7d6a453ad2a68bd7a9e0e18",
+            "url": "https://github.com/mmpx12/twitter-media-downloader",
+            "provider": "github",
+            "package_path": "twitter-media-downloader",
+            "pinned": false
+        }
+    }
+}
