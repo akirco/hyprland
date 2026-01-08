@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# 定义显示器名称（请根据 hyprctl monitors 的输出确认名称）
+LAPTOP="eDP-1"
+EXTERNAL="HDMI-A-1"
+
+# 处理显示器逻辑的函数
+handle_monitors() {
+    # 获取当前连接的所有显示器列表
+    # 使用 hyprctl monitors 检查外部显示器是否在线
+    if hyprctl monitors | grep -q "$EXTERNAL"; then
+        echo "检测到外接显示器 $EXTERNAL，关闭笔记本屏幕 $LAPTOP"
+        # 禁用笔记本屏幕，启用外接屏幕（设置分辨率为 preferred, 位移 0x0, 缩放 1）
+        hyprctl keyword monitor "$LAPTOP, disable"
+        hyprctl keyword monitor "$EXTERNAL, 2560x1440@60, 0x0, 1"
+    else
+        echo "外接显示器已断开，重新启用笔记本屏幕 $LAPTOP"
+        # 启用笔记本屏幕
+        hyprctl keyword monitor "$LAPTOP, preferred, 0x0, 1"
+    fi
+}
+
+# 脚本启动时先执行一次，确保当前状态正确
+handle_monitors
+
+# 监听 Hyprland 事件流
+# .socket2.sock 专门用于广播事件
+socat -U - UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock | while read -r line; do
+    # 只要发生显示器增加或移除事件，就重新评估状态
+    if [[ $line == "monitoradded>>"* ]] || [[ $line == "monitorremoved>>"* ]]; then
+        # 稍微延迟一下，等待系统完成硬件握手
+        sleep 10
+        handle_monitors
+    fi
+done

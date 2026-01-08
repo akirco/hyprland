@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+DIR=$1
+TEMP_FILE="/tmp/hypr_prev_ws"
+CUR_WS=$(hyprctl activeworkspace -j | jq '.id')
+ALL_WS=$(hyprctl workspaces -j | jq '.[] | .id' | sort -n)
+
+# 记录当前位置的函数
+save_current_ws() {
+    echo "$CUR_WS" >"$TEMP_FILE"
+}
+
+if [ "$DIR" == "next" ]; then
+    NEXT_WS=$((CUR_WS + 1))
+    if echo "$ALL_WS" | grep -q "^$NEXT_WS$"; then
+        hyprctl dispatch workspace $NEXT_WS
+    else
+        BIGGER_WS=$(echo "$ALL_WS" | awk -v cur="$CUR_WS" '$1 > cur {print $1}' | head -n 1)
+        if [ -z "$BIGGER_WS" ]; then
+            hyprctl dispatch workspace r+1
+        else
+            hyprctl dispatch workspace $BIGGER_WS
+        fi
+    fi
+
+elif [ "$DIR" == "prev" ]; then
+    PREV_WS=$((CUR_WS - 1))
+    [ "$PREV_WS" -le 0 ] && exit 0
+    if echo "$ALL_WS" | grep -q "^$PREV_WS$"; then
+        hyprctl dispatch workspace $PREV_WS
+    else
+        SMALLER_WS=$(echo "$ALL_WS" | awk -v cur="$CUR_WS" '$1 < cur {print $1}' | tail -n 1)
+        if [ -z "$SMALLER_WS" ]; then
+            hyprctl dispatch workspace r-1
+        else
+            hyprctl dispatch workspace $SMALLER_WS
+        fi
+    fi
+
+elif [ "$DIR" == "new_down" ]; then
+    # 【Super+Down】逻辑：记录当前 ID，然后去空工作区
+    save_current_ws
+    # 动画优化建议：这里可以用之前提到的临时切换 slidevert 的逻辑
+    hyprctl keyword animation "workspaces, 1, 6, bounce, slidevert"
+    hyprctl dispatch workspace empty
+    (sleep 0.5 && hyprctl keyword animation "workspaces, 1, 6, default, slide") &
+
+elif [ "$DIR" == "back_up" ]; then
+    # 【Super+Up】逻辑：读取保存的 ID 并跳回
+    if [ -f "$TEMP_FILE" ]; then
+        TARGET_WS=$(cat "$TEMP_FILE")
+        if [ "$TARGET_WS" != "$CUR_WS" ]; then
+            hyprctl keyword animation "workspaces, 1, 6, bounce, slidevert"
+            hyprctl dispatch workspace "$TARGET_WS"
+            (sleep 0.5 && hyprctl keyword animation "workspaces, 1, 6, default, slide") &
+        fi
+    fi
+fi

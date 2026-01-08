@@ -11,7 +11,7 @@
           "type": "session"
         },
         {
-          "foreground": "cyan",
+          "foreground": "green",
           "options": {
             "style": "folder"
           },
@@ -20,13 +20,75 @@
           "type": "path"
         },
         {
+          "type": "go",
+          "style": "plain",
+          "foreground": "#7FD5EA",
+          "template": " <b></b> {{ .Full }}"
+        },
+        {
+          "type": "node",
+          "style": "plain",
+          "foreground": "#699E5B",
+          "template": "<b></b> {{ .Full }}"
+        },
+        {
+          "type": "nim",
+          "style": "plain",
+          "foreground": "#f3d400",
+          "template": " <b></b> {{ .Full }}"
+        },
+        {
+          "type": "python",
+          "style": "plain",
+          "foreground": "#3970A0",
+          "template": " <b></b> {{ .Full }}"
+        },
+        {
+          "type": "rust",
+          "style": "plain",
+          "foreground": "#E95914",
+          "template": " <b></b> {{ .Full }}"
+        },
+        {
+          "type": "zig",
+          "style": "plain",
+          "foreground": "#ffad55",
+          "template": " <b></b> {{ .Full }}"
+        },
+        {
           "foreground": "#ff94df",
           "options": {
-            "branch_icon": " <#ff94df><b>\ue0a0 </b></>"
+            "branch_icon": " <#ff94df><b>\uf126 </b></>"
           },
           "style": "plain",
-          "template": "<#ffffff>on</> {{ .HEAD }}{{ if gt .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} ",
+          "template": " <#ffffff>on</> {{ .HEAD }}{{ if gt .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} ",
           "type": "git"
+        }
+      ],
+      "type": "prompt"
+    },
+    {
+      "alignment": "right",
+      "segments": [
+        {
+          "foreground": "white",
+          "options": {
+            "always_enabled": true,
+            "style": "round"
+          },
+          "style": "plain",
+          "template": "<#373D45>{{ .FormattedMs }}</>",
+          "type": "executiontime"
+        },
+        {
+          "foreground": "green",
+          "foreground_templates": ["{{ if gt .Code 0 }}red{{ end }}"],
+          "options": {
+            "always_enabled": true
+          },
+          "style": "plain",
+          "template": " <b>{{ if gt .Code 0 }}✘{{else}}✔{{ end }}</> ",
+          "type": "status"
         }
       ],
       "type": "prompt"

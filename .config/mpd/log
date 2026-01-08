@@ -1,0 +1,11 @@
+2026-01-03T13:32:32 config: option "dvice" on line 229 was not recognized
+2026-01-03T13:32:32 update: added /三天兩夜-张学友.mp3
+2026-01-03T13:33:20 config: option "dvice" on line 229 was not recognized
+2026-01-03T13:33:32 mixer: Failed to read mixer for "My ALSA Device": no such mixer control: PCM
+2026-01-03T13:33:37 output: Failed to open mixer for "My ALSA Device": no such mixer control: PCM
+2026-01-03T13:38:17 player: played "三天兩夜-张学友.mp3"
+2026-01-03T13:40:59 config: option "dvice" on line 229 was not recognized
+2026-01-03T13:41:06 mixer: Failed to read mixer for "My ALSA Device": no such mixer control: PCM
+2026-01-03T13:54:08 config: option "dvice" on line 230 was not recognized
+2026-01-03T13:57:04 mixer: Failed to read mixer for "My ALSA Device": no such mixer control: PCM
+2026-01-03T13:57:14 output: Failed to open mixer for "My ALSA Device": no such mixer control: PCM

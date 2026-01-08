@@ -38,9 +38,9 @@ Windows
 .config/go-musicfox/musicfox.log
 .config/go-musicfox/qrcode.png
 
-.config/gtk-2.0
-.config/gtk-3.0
-.config/gtk-4.0
+# .config/gtk-2.0
+# .config/gtk-3.0
+# .config/gtk-4.0
 .config/ibus
 .config/inkscape
 # .config/mpv

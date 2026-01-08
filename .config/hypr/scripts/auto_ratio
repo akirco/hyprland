@@ -1,0 +1,52 @@
+#!/bin/bash
+
+CONFIG_FILE="$HOME/.config/hypr/ratio_rules.conf"
+
+apply_ratio_rules() {
+    # 使用单个 hyprctl 调用获取所有数据，减少开销
+    local DATA
+    DATA=$(hyprctl -j clients)
+    local ACTIVE_WS
+    ACTIVE_WS=$(hyprctl -j activeworkspace | jq '.id')
+
+    # 提取当前工作区非浮动窗口类名
+    mapfile -t clients < <(echo "$DATA" | jq -r ".[] | select(.workspace.id == $ACTIVE_WS and .floating == false) | .class" | tr '[:upper:]' '[:lower:]' | sort)
+
+    if [ "${#clients[@]}" -eq 2 ]; then
+        c1="${clients[0]}"
+        c2="${clients[1]}"
+
+        while read -r conf_c1 conf_c2 ratio; do
+            [[ "$conf_c1" =~ ^#.*$ || -z "$conf_c1" ]] && continue
+
+            # 排序配置中的类名进行对比
+            read -r sc1 sc2 < <(echo "$conf_c1 $conf_c2" | tr ' ' '\n' | tr '[:upper:]' '[:lower:]' | sort | xargs)
+
+            if [[ "$c1" == "$sc1" && "$c2" == "$sc2" ]]; then
+                # 2026 推荐：直接计算偏移。假设 ratio 是 0.7 (想要 7:3)
+                # 计算偏移量：0.7 - 0.5 = 0.2
+                # 使用 exact (如果 hyprland 版本支持) 或直接计算差值
+                local offset=$(echo "$ratio - 0.5" | bc)
+                hyprctl dispatch splitratio exact "$ratio" >/dev/null 2>&1 ||
+                    (hyprctl dispatch splitratio 0 && hyprctl dispatch splitratio "$offset")
+                return
+            fi
+        done <"$CONFIG_FILE"
+    fi
+}
+
+# 确保依赖项存在
+if ! command -v socat &>/dev/null || ! command -v jq &>/dev/null; then
+    notify-send "Hyprland脚本错误" "请安装 socat 和 jq"
+    exit 1
+fi
+
+# 监听事件流
+# 监听 openwindow(打开), closewindow(关闭), movewindow(移动), workspace(切换工作区)
+socat -U - UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" | while read -r line; do
+    case $line in
+    openwindow* | closewindow* | movewindow* | workspace*)
+        apply_ratio_rules
+        ;;
+    esac
+done

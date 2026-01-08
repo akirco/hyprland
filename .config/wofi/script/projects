@@ -1,0 +1,4 @@
+find ~/Projects/ -maxdepth 2 -mindepth 2 -type d | wofi -m -d -p "Select Project" -r "echo '<span foreground=\"cyan\"> 󰨞</span>   %s'" | while read -r path; do
+    [ -n "$path" ] && code "$path"
+done
+

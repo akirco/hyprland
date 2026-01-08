@@ -1,0 +1,6 @@
+--sub-lang "en"
+--write-auto-subs
+--embed-subs
+--force-ipv4
+
+-o ~/Videos/YouTube/%(title)s.%(ext)s

@@ -6,10 +6,10 @@ on-button-left=dismiss
 on-button-middle=none
 on-button-right=dismiss-all
 on-touch=dismiss
-on-notify=exec mpv /usr/share/sounds/freedesktop/stereo/message.oga
+on-notify=exec paplay /usr/share/sounds/freedesktop/stereo/message.oga
 
 # STYLE OPTIONS
-font='Noto Sans CJK SC' 14
+font='Adwaita Sans' 15
 width=350
 height=150
 margin=10
@@ -25,26 +25,24 @@ history=1
 text-alignment=left
 default-timeout=5000
 ignore-timeout=0
-max-visible=5
+max-visible=8
 layer=overlay
+# anchor=top-center
 
-background-color=#101010C0
+background-color=#161720E6
 text-color=#cdd6f4
-border-color=#000000
+border-color=#1AE58AB3
 progress-color=over #313244
-
-# background-color=#1e1e2e
-# text-color=#d9e0ee
-# border-color=#313244
-# progress-color=over #89b4fa
+icon-path=/usr/share/icons/candy-icons
 
 [urgency=low]
 border-color=#000000
 default-timeout=2000
 
 [urgency=normal]
-border-color=#000000
+border-color=#1AE58AE6
 default-timeout=5000
+
 
 [urgency=high]
 border-color=#000000
