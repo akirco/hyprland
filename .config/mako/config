@@ -1,4 +1,4 @@
-max-history=100
+max-history=5
 sort=-time
 
 # BINDING OPTIONS
@@ -6,7 +6,7 @@ on-button-left=dismiss
 on-button-middle=none
 on-button-right=dismiss-all
 on-touch=dismiss
-on-notify=exec paplay /usr/share/sounds/freedesktop/stereo/message.oga
+# on-notify=exec paplay /usr/share/sounds/freedesktop/stereo/message.oga
 
 # STYLE OPTIONS
 font='Adwaita Sans' 15
@@ -29,18 +29,18 @@ max-visible=8
 layer=overlay
 # anchor=top-center
 
-background-color=#161720E6
+background-color=#0e1011B3
 text-color=#cdd6f4
 border-color=#1AE58AB3
-progress-color=over #313244
+progress-color=over #010010
 icon-path=/usr/share/icons/candy-icons
 
 [urgency=low]
-border-color=#000000
+border-color=#0e1011b3
 default-timeout=2000
 
 [urgency=normal]
-border-color=#1AE58AE6
+border-color=#1AE58Ab3
 default-timeout=5000
 
 
@@ -53,3 +53,16 @@ default-timeout=0
 border-color=#000000
 default-timeout=2000
 group-by=category
+
+[app-name=show-keys]
+anchor=bottom-right
+font='JetBrainsMono Nerd Font' 40
+width=300
+height=150
+outer-margin=40
+padding=10
+text-alignment=center
+background-color=#0e1011CC
+text-color=#ffffff
+default-timeout=600
+

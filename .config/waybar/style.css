@@ -15,9 +15,9 @@ window#waybar {
 }
 
 tooltip {
-  background: rgba(28, 31, 37, 0.65);
+  background: rgba(14, 16, 17, 1);
   color: #b4befe;
-  border-radius: 2px;
+  border-radius: 12px;
 }
 
 /* ------------------------------ left modules ------------------------------ */
@@ -27,8 +27,8 @@ tooltip {
 /* -------------------------------------------------------------------------- */
 #clock {
   color: #f5c359;
-  background: rgba(10, 10, 10, 0.9);
-  border-radius: 8px;
+  background: rgba(14, 16, 17, 1);
+  border-radius: 12px;
   padding: 2px 10px 2px 10px;
   margin-top: 4px;
   margin-left: 4px;
@@ -40,10 +40,10 @@ tooltip {
 
 #workspaces {
   margin-left: 20px;
-  background: rgba(10, 10, 10, 0.9);
-  border-radius: 8px;
+  background: rgba(14, 16, 17, 1);
+  border-radius: 12px;
   margin-top: 4px;
-  padding: 4px;
+  padding: 2px;
 }
 
 #workspaces button {
@@ -72,11 +72,11 @@ tooltip {
 /* ------------------------------ center module ----------------------------- */
 
 #window {
-  color: #5b7ded;
-  background: rgba(10, 10, 10, 0.9);
-  border-radius: 8px;
+  color: #b4befe;
+  background: rgba(14, 16, 17, 1);
+  border-radius: 12px;
   margin-top: 4px;
-  margin-right: 10px;
+  margin-left: 15px;
   padding: 2px 10px 2px 10px;
 }
 
@@ -96,26 +96,40 @@ window#waybar.empty #window {
 #pulseaudio.microphone,
 #custom-recorder,
 #tray {
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 2px 10px 2px 10px;
   color: white;
   margin-top: 4px;
 }
+/* waycat */
+
+#custom-cpucat {
+  font-family: "Waycat", monospace;
+  font-size: 32px;
+  font-weight: bold;
+  color: #b2bab8;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: rgba(14, 16, 17, 1);
+  padding-left: 10px;
+  padding-right: 20px;
+  margin-right: 10px;
+}
 
 #cpu {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #f9c74f;
 }
 
 #memory {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #f9c74f;
 }
 
 #temperature {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #97cd23;
 }
@@ -125,7 +139,7 @@ window#waybar.empty #window {
 }
 
 #battery {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #19ef8f;
 }
@@ -148,37 +162,37 @@ window#waybar.empty #window {
 }
 
 #network {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #0f69de;
 }
 
 #bluetooth {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #0f69de;
 }
 
 #bluetooth.connected {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #047af8;
 }
 
 #backlight {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #f58686;
 }
 
 #pulseaudio {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #984df8;
 }
 
 #pulseaudio.microphone {
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   margin-right: 10px;
   color: #984df8;
 }
@@ -191,14 +205,15 @@ window#waybar.empty #window {
 
 #custom-recorder {
   margin-right: 10px;
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   padding-left: 10px;
   padding-right: 10px;
-  color: #d37576;
+  color: #ebdcdc;
 }
 #custom-recorder.recording {
   margin-right: 10px;
-  animation: blink 2s steps(5, start) infinite;
+  color: #fd968f;
+  animation: blink 1s steps(5, start) infinite;
 }
 
 /* ----------------------------------- vpn ---------------------------------- */
@@ -206,27 +221,27 @@ window#waybar.empty #window {
   padding: 2px 10px 2px 10px;
   margin-top: 4px;
   margin-right: 10px;
-  border-radius: 8px;
+  border-radius: 12px;
   min-width: 60px;
 }
 
 #custom-vpn.running {
-  background-color: rgba(10, 10, 10, 0.9);
+  background-color: rgba(14, 16, 17, 1);
   color: #26a269;
 }
 
 #custom-vpn.stopped {
-  background-color: rgba(10, 10, 10, 0.9);
+  background-color: rgba(14, 16, 17, 1);
   color: #c01c28;
 }
 
 #custom-vpn.error {
-  background-color: rgba(10, 10, 10, 0.9);
+  background-color: rgba(14, 16, 17, 1);
   color: #f66151;
 }
 
 #custom-vpn.critical {
-  background-color: rgba(10, 10, 10, 0.9);
+  background-color: rgba(14, 16, 17, 1);
   color: #ff7800;
 }
 
@@ -235,7 +250,7 @@ window#waybar.empty #window {
 #custom-capslock {
   margin-right: 10px;
   padding: 2px 10px 2px 10px;
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
 }
 
 #custom-capslock .capslock-on {
@@ -249,7 +264,7 @@ window#waybar.empty #window {
 
 #tray {
   margin-right: 4px;
-  background: rgba(10, 10, 10, 0.9);
+  background: rgba(14, 16, 17, 1);
   color: #cdd6f4;
 }
 

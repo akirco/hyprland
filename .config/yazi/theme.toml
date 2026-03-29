@@ -49,7 +49,7 @@ count_selected = { fg = "black", bg = "yellow" }
 
 # Border
 border_symbol = "│"
-border_style  = { fg = "gray" }
+border_style  = { fg = "lightblue" }
 
 # Highlighting
 syntect_theme = ""
@@ -280,6 +280,7 @@ dirs  = [
 	{ name = "Pictures", text = "" },
 	{ name = "Public", text = "" },
 	{ name = "Videos", text = "" },
+    {name="Projects",text='󰨞'}
 ]
 files = [
 	{ name = ".babelrc", text = "", fg = "#cbcb41" },

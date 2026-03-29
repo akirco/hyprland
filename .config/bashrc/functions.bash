@@ -9,129 +9,6 @@ path() {
     echo -e ${PATH//:/\\n}
 }
 
-ex() {
-    if [ -f "$1" ]; then
-        local extract_to=""
-        if [ -n "$2" ]; then
-            if [ -d "$2" ]; then
-                extract_to="$2"
-            else
-                mkdir -p "$2" && extract_to="$2"
-                if [ $? -ne 0 ]; then
-                    echo "failed to create directory '$2'"
-                    return 1
-                fi
-            fi
-        fi
-
-        case "$1" in
-        *.tar.bz2)
-            if [ -n "$extract_to" ]; then
-                tar xjf "$1" -C "$extract_to"
-            else
-                tar xjf "$1"
-            fi
-            ;;
-        *.tar.gz)
-            if [ -n "$extract_to" ]; then
-                tar xzf "$1" -C "$extract_to"
-            else
-                tar xzf "$1"
-            fi
-            ;;
-        *.bz2)
-            if [ -n "$extract_to" ]; then
-                bunzip2 -c "$1" >"$extract_to/$(basename "${1%.bz2}")"
-            else
-                bunzip2 "$1"
-            fi
-            ;;
-        *.rar)
-            if [ -n "$extract_to" ]; then
-                unrar x "$1" "$extract_to"
-            else
-                unrar x "$1"
-            fi
-            ;;
-        *.gz)
-            if [ -n "$extract_to" ]; then
-                gunzip -c "$1" >"$extract_to/$(basename "${1%.gz}")"
-            else
-                gunzip "$1"
-            fi
-            ;;
-        *.tar)
-            if [ -n "$extract_to" ]; then
-                tar xf "$1" -C "$extract_to"
-            else
-                tar xf "$1"
-            fi
-            ;;
-        *.tbz2)
-            if [ -n "$extract_to" ]; then
-                tar xjf "$1" -C "$extract_to"
-            else
-                tar xjf "$1"
-            fi
-            ;;
-        *.tgz)
-            if [ -n "$extract_to" ]; then
-                tar xzf "$1" -C "$extract_to"
-            else
-                tar xzf "$1"
-            fi
-            ;;
-        *.zip)
-            if [ -n "$extract_to" ]; then
-                unzip "$1" -d "$extract_to"
-            else
-                unzip "$1"
-            fi
-            ;;
-        *.Z)
-            if [ -n "$extract_to" ]; then
-                uncompress -c "$1" >"$extract_to/$(basename "${1%.Z}")"
-            else
-                uncompress "$1"
-            fi
-            ;;
-        *.7z)
-            if [ -n "$extract_to" ]; then
-                7z x "$1" -o"$extract_to"
-            else
-                7z x "$1"
-            fi
-            ;;
-        *.deb)
-            if [ -n "$extract_to" ]; then
-                ar x "$1" --output="$extract_to"
-            else
-                ar x "$1"
-            fi
-            ;;
-        *.tar.xz)
-            if [ -n "$extract_to" ]; then
-                tar xf "$1" -C "$extract_to"
-            else
-                tar xf "$1"
-            fi
-            ;;
-        *.tar.zst)
-            if [ -n "$extract_to" ]; then
-                tar xf "$1" -C "$extract_to"
-            else
-                tar xf "$1"
-            fi
-            ;;
-        *)
-            echo "'$1' cannot be extracted via ex()"
-            ;;
-        esac
-    else
-        echo "'$1' is not a valid file"
-    fi
-}
-
 proxy_on() {
     export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=http://127.0.0.1:7890
 }
@@ -163,14 +40,60 @@ memo() {
 }
 
 pros() {
-    second_choice=$(
-        first_choice=$(eza "$HOME/Projects" --absolute -D | fzf)
-        if [[ -n "$first_choice" ]]; then
-            eza --absolute -D "$first_choice" | fzf
-        fi
-    )
-    if [[ -n "$second_choice" ]]; then
-        nvim "$second_choice"
-    fi
-}
+    PROJECTS_DIR="${HOME}/Projects"
 
+    # Check that the projects directory exists
+    if [[ ! -d "$PROJECTS_DIR" ]]; then
+        echo "Error: Projects directory '$PROJECTS_DIR' does not exist." >&2
+        exit 1
+    fi
+
+    # List all immediate subdirectories of the projects folder.
+    # We use `eza` if available, otherwise fallback to `find`.
+    if command -v eza >/dev/null 2>&1; then
+        list_dirs() {
+            eza --absolute --only-dirs "$1"
+        }
+    else
+        list_dirs() {
+            find "$1" -maxdepth 1 -mindepth 1 -type d -print0 | xargs -0 -n1 realpath
+        }
+    fi
+
+    # First level: choose a project directory.
+    # Preview shows the tree of its contents (subdirs and files) inline.
+    first_choice=$(
+        list_dirs "$PROJECTS_DIR" |
+            fzf \
+                --prompt="❯ " \
+                --preview="eza --tree --level=2 --icons {} 2>/dev/null || ls -la {}" \
+                --preview-window="right:60%:wrap" \
+                --height="30%" \
+                --reverse
+    )
+
+    # If nothing was selected, exit.
+    [[ -z "$first_choice" ]] && exit 0
+
+    # Second level: choose a subdirectory (or file) inside the chosen project.
+    # Preview shows the content of the selected item (file preview with bat if available).
+    second_choice=$(
+        list_dirs "$first_choice" |
+            fzf \
+                --prompt="❯ " \
+                --preview='if [[ -f {} ]]; then bat --style=numbers --color=always {} 2>/dev/null || cat {}; else eza --tree --level=1 --icons {} 2>/dev/null || ls -la {}; fi' \
+                --preview-window="right:60%:wrap" \
+                --height="30%" \
+                --reverse
+    )
+
+    # If nothing was selected in the second step, open the first choice instead.
+    if [[ -z "$second_choice" ]]; then
+        target="$first_choice"
+    else
+        target="$second_choice"
+    fi
+
+    # Open the final selection with neovim.
+    cd "$target"
+}

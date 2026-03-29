@@ -1,5 +1,5 @@
-width=750
-height=450
+width=800
+height=500
 location=center
 show=drun
 prompt=Search...
@@ -12,4 +12,5 @@ content_halign=fill
 insensitive=true
 allow_images=true
 image_size=35
-gtk_dark=true
+gtk_dark=false
+; normal_window=true
