@@ -1,3 +1,21 @@
-#!/bin/bash
-FILE="$HOME/Pictures/screenshot_$(date +%Y%m%d_%H%M%S).png"
-grim -g "$(slurp)" "$FILE" && imv "$FILE"
+#!/usr/bin/env bash
+
+SOUND_FILE="/usr/share/sounds/freedesktop/stereo/screen-capture.oga"
+SAVE_DIR="$HOME/Pictures"
+FILE="$SAVE_DIR/shot_$(date +%Y%m%d_%H%M%S).png"
+
+mkdir -p "$SAVE_DIR"
+
+case "$1" in
+-f | --full | --fullscreen)
+	grim "$FILE"
+	;;
+*)
+	grim -g "$(slurp)" "$FILE"
+	;;
+esac
+
+if [ $? -eq 0 ]; then
+	paplay "$SOUND_FILE" &
+	imv -f "$FILE"
+fi

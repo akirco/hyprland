@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -e
+
+# TS=$(date +%Y%m%d_%H%M%S)
+AUDIO="/tmp/dictation.wav"
+TEXT="/tmp/dictation.txt"
+PID="/tmp/dictation.pid"
+TIMER_PID="/tmp/dictation-timer.pid"
+
+# Overlay config
+OVERLAY_PID="/tmp/dictation-overlay.pid"
+OVERLAY_APP="$HOME/.local/bin/overlay"
+
+# WHISPER="/usr/bin/whisper-cli"
+# MODEL="$HOME/.whisper/ggml-large-v3-turbo.bin"
+ASR="$HOME/.qwen3_asr/asr"
+MODEL="$HOME/.qwen3_asr/Qwen3-ASR-0.6B"
+
+export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+
+stop_process() {
+    local pid_file="$1"
+
+    if [ -f "$pid_file" ]; then
+        local pid
+        pid=$(cat "$pid_file")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -SIGINT "$pid" 2>/dev/null || true
+            local running=true
+            for _ in {1..10}; do
+                if ! kill -0 "$pid" 2>/dev/null; then
+                    running=false
+                    break
+                fi
+                sleep 0.1
+            done
+            if [ "$running" = true ]; then
+                 kill -9 "$pid" 2>/dev/null || true
+            fi
+        fi
+        rm -f "$pid_file"
+    fi
+}
+
+stop_timer() {
+    if [ -f "$TIMER_PID" ]; then
+        local tpid
+        tpid=$(cat "$TIMER_PID")
+        if kill -0 "$tpid" 2>/dev/null; then
+            kill "$tpid" 2>/dev/null || true
+        fi
+        rm -f "$TIMER_PID"
+    fi
+}
+
+is_running() {
+    if [ -f "$PID" ]; then
+        local pid
+        pid=$(cat "$PID")
+        if kill -0 "$pid" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+start() {
+    pkill -f "overlay" || true
+    pkill -f "pw-record.*dictation.wav" || true
+    stop_timer
+
+    stop_process "$PID"
+    stop_process "$OVERLAY_PID"
+
+    if [ -x "$OVERLAY_APP" ]; then
+        "$OVERLAY_APP" --record >/dev/null 2>&1 &
+        echo $! > "$OVERLAY_PID"
+    fi
+
+    pw-record "$AUDIO" --channels 1 --rate 16000 &
+    echo $! > "$PID"
+
+    SCRIPT_PATH=$(realpath "$0")
+    (sleep 60 && "$SCRIPT_PATH" stop) >/dev/null 2>&1 &
+    echo $! > "$TIMER_PID"
+}
+
+stop() {
+    stop_timer
+
+    stop_process "$PID"
+    stop_process "$OVERLAY_PID"
+
+    if [ -x "$OVERLAY_APP" ]; then
+        "$OVERLAY_APP" --transcribe >/dev/null 2>&1 &
+        echo $! > "$OVERLAY_PID"
+    fi
+
+    sync
+
+    if [ ! -f "$AUDIO" ]; then
+        stop_process "$OVERLAY_PID"
+        exit 1
+    fi
+
+    # set +e
+    # "$WHISPER" \
+    #   -m "$MODEL" \
+    #   -f "$AUDIO" \
+    #   -otxt \
+    #   -of /tmp/dictation \
+    #   -l zh \
+    #   --no-timestamps
+    "$ASR" "$MODEL" "$AUDIO" "chinese" > "$TEXT"
+    # set -e
+
+    stop_process "$OVERLAY_PID"
+
+    if [[ -s "$TEXT" ]]; then
+      ASR_TEXT=$(sed -n 's/.*<asr_text>//p' "$TEXT")
+      if [[ -n "$ASR_TEXT" ]]; then
+        wtype "$ASR_TEXT"
+      fi
+    fi
+
+    # rm -f "$AUDIO" "$TEXT"
+}
+
+toggle() {
+    if is_running; then
+        stop
+    else
+        start
+    fi
+}
+
+case "$1" in
+  toggle)
+    toggle
+    ;;
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+esac

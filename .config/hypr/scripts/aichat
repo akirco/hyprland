@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+OPTIONS="DeepSeek
+ChatGPT
+Gemini
+Grok
+Kimi
+Qwen
+Doubao
+MiniMax
+GLM"
+
+CHOICE=$(echo "$OPTIONS" | wofi --dmenu --prompt " select your ai assistant:" -i --lines=9)
+
+if [ -z "$CHOICE" ]; then
+	exit 0
+fi
+
+case "$CHOICE" in
+"DeepSeek")
+	URI="https://chat.deepseek.com"
+	NAME="deepseek"
+	;;
+"ChatGPT")
+	URI="https://chatgpt.com"
+	NAME="chatgpt"
+	;;
+"Gemini")
+	URI="https://gemini.google.com"
+	NAME="gemini"
+	;;
+"Grok")
+	URI="https://grok.com"
+	NAME="grok"
+	;;
+"Kimi")
+	URI="https://www.kimi.com/zh"
+	NAME="kimi"
+	;;
+"Qwen")
+	URI="https://www.qianwen.com"
+	NAME="qwen"
+	;;
+"Doubao")
+	URI="https://www.doubao.com/chat"
+	NAME="doubao"
+	;;
+"MiniMax")
+	URI="https://agent.minimaxi.com"
+	NAME="minimax"
+	;;
+"GLM")
+	URI="https://chat.z.ai"
+	NAME="zai"
+	;;
+*)
+	exit 1
+	;;
+esac
+
+yad --html --browser --uri="$URI" --name="$NAME" --class="$NAME" --width=1200 --height=800 &

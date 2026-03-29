@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Get the active window address
+addr=$(hyprctl activewindow -j | jq -r '.address')
+if [[ -z "$addr" || "$addr" == "null" ]]; then
+    echo "No active window." >&2
+    exit 1
+fi
+
+# Fetch all clients and find the one matching the address
+client_json=$(hyprctl clients -j)
+floating=$(echo "$client_json" | jq -r ".[] | select(.address == \"$addr\") | .floating")
+pinned=$(echo "$client_json" | jq -r ".[] | select(.address == \"$addr\") | .pinned")
+
+# If the window is tiled, make it floating first (pin only works on floating windows)
+if [[ "$floating" != "true" ]]; then
+    hyprctl dispatch togglefloating
+    # The window is now floating; no need to re‑fetch immediately for pinning
+fi
+
+# Pin if not already pinned
+if [[ "$pinned" != "true" ]]; then
+    hyprctl dispatch pin
+fi
+
+# Move to top edge, then left edge
+hyprctl dispatch movewindow t
+hyprctl dispatch movewindow l

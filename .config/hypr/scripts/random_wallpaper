@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Wallpaper changer script for Sway/Wayland
 # Features: error handling, image format filtering, process management

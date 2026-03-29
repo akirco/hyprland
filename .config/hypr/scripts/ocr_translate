@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ================= 配置区 =================
+SOURCE_LANG="${1:-eng}"  # 源语言，默认 eng (英文)，中文可用 chi_sim
+TARGET_LANG="${2:-zh}"   # 目标语言，默认 zh (简体中文)
+
+# 历史记录文件路径 (保存在用户主目录下)
+HISTORY_FILE="${HOME}/Documents/ocr_translation_history.md"
+# ==========================================
+
+# 1. 依赖检查
+check_deps() {
+    local missing=()
+    for dep in grim slurp tesseract trans; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing+=("$dep")
+        fi
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "\e[31m缺少核心依赖: ${missing[*]}\e[0m"
+        echo "请安装以下软件："
+        echo "  grim, slurp     - Wayland截图工具"
+        echo "  tesseract-ocr   - OCR引擎"
+        echo "  translate-shell - 翻译工具"
+        exit 1
+    fi
+}
+
+check_deps
+
+# 2. 安全清理：无论脚本正常结束还是被中断，都会自动删除临时文件
+TEMP_IMG=$(mktemp --suffix=.png)
+trap 'rm -f "$TEMP_IMG"' EXIT INT TERM
+
+# 3. 截取区域
+echo "请选择要翻译的区域..."
+if ! AREA=$(slurp 2>/dev/null); then
+    echo "已取消截取。"
+    exit 0
+fi
+
+# 保存截图
+grim -g "$AREA" "$TEMP_IMG"
+
+# 4. OCR识别 (直接将结果存入变量)
+echo "正在识别文字..."
+# 过滤掉多余的空行，并清理首尾空白字符
+OCR_TEXT=$(tesseract -l "$SOURCE_LANG" "$TEMP_IMG" stdout 2>/dev/null | awk 'NF {print $0}')
+
+if [ -z "$OCR_TEXT" ]; then
+    echo -e "\e[33m未识别到任何文字。\e[0m"
+    command -v notify-send &>/dev/null && notify-send -t 3000 "OCR 提示" "未识别到任何文字"
+    exit 1
+fi
+
+echo -e "\n=== 识别到的原文 ==="
+echo "$OCR_TEXT"
+
+# 5. 翻译处理 (只调用一次 trans API)
+echo -e "\n=== 翻译结果 ==="
+TRANSLATED_TEXT=$(trans -b ":$TARGET_LANG" "$OCR_TEXT")
+
+if [ -z "$TRANSLATED_TEXT" ]; then
+    echo -e "\e[31m翻译失败或无返回结果。\e[0m"
+    exit 1
+fi
+
+echo "$TRANSLATED_TEXT"
+
+# 6. 保存到 Markdown 历史记录
+# 如果文件不存在，先写入一个标题
+if [ ! -f "$HISTORY_FILE" ]; then
+    echo "# OCR 翻译历史记录" > "$HISTORY_FILE"
+    echo "" >> "$HISTORY_FILE"
+fi
+
+# 将当前时间和结果追加到文件 (使用 sed 为多行文本添加 Markdown 引用标记 > )
+{
+    echo "### $(date '+%Y-%m-%d %H:%M:%S')"
+    echo ""
+    echo "**原文 (${SOURCE_LANG}):**"
+    echo "$OCR_TEXT" | sed 's/^/> /'
+    echo ""
+    echo "**译文 (${TARGET_LANG}):**"
+    echo "$TRANSLATED_TEXT" | sed 's/^/> /'
+    echo ""
+    echo "---"
+    echo ""
+} >> "$HISTORY_FILE"
+
+# 7. 复制与系统通知
+# 剪贴板
+if command -v wl-copy &>/dev/null; then
+    echo -n "$TRANSLATED_TEXT" | wl-copy
+    echo -e "\e[32m\n[✓] 翻译结果已复制到剪贴板\e[0m"
+fi
+
+echo "记录已保存至: $HISTORY_FILE"

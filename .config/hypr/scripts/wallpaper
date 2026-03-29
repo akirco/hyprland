@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+WALLPAPER_DIR="$HOME/Pictures/wallpapers"
+CACHE_DIR="$HOME/.cache/thumbnails/wallpapers"
+SHUFFLE_ICON_PATH="$HOME/.config/hypr/assets/shuffle.png"
+SHUFFLE_ICON="$CACHE_DIR/shuffle.png"
+SHUFFLE_ICON_BG_COLOR="#182429"
+THUMBNAIL_WIDTH="276"
+THUMBNAIL_HEIGHT="155"
+
+# Wofi 配置内容
+DEFAULT_CONFIG="
+width=1150
+height=806
+location=center
+show=dmenu
+prompt=
+layer=overlay
+normal_window=false
+columns=4
+image_size=276x155
+allow_images=true
+content_halign=center
+insensitive=true
+hide_scroll=true
+sort_order=default
+hide_search=false"
+
+mkdir -p "$CACHE_DIR"
+
+# 1. 生成随机图标
+generate_shuffle_icon() {
+    if [[ ! -f "$SHUFFLE_ICON" && -f "$SHUFFLE_ICON_PATH" ]]; then
+        magick -size "${THUMBNAIL_WIDTH}x${THUMBNAIL_HEIGHT}" xc:$SHUFFLE_ICON_BG_COLOR \
+            \( "$SHUFFLE_ICON_PATH" -resize "80x80" \) \
+            -gravity center -composite "$SHUFFLE_ICON"
+    fi
+}
+
+# 2. 预检查并生成缩略图 (带通知)
+# 2. 预检查并生成缩略图 (优化进度显示)
+prepare_thumbnails() {
+    # 使用 find 获取文件列表存入数组，准确计算 total
+    mapfile -t files < <(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \))
+    local total=${#files[@]}
+    local count=0
+    local new_gen=0
+
+    for img in "${files[@]}"; do
+        ((count++))
+        filename=$(basename "$img")
+        thumb="$CACHE_DIR/${filename%.*}.png"
+
+        # 仅当缩略图不存在或原图更新时才转换
+        if [[ ! -f "$thumb" ]] || [[ "$img" -nt "$thumb" ]]; then
+            ((new_gen++))
+            # 实时进度通知：使用同步句柄避免通知堆栈
+            notify-send "缩略图预处理" "进度: $count / $total \n正在转换: $filename" \
+                -h string:x-canonical-private-synchronous:wallpaper-gen \
+                -h int:value:$((count * 100 / total)) \
+                -i gallery
+
+            magick "$img" -thumbnail "${THUMBNAIL_WIDTH}x${THUMBNAIL_HEIGHT}^" \
+                -gravity center -extent "${THUMBNAIL_WIDTH}x${THUMBNAIL_HEIGHT}" "$thumb"
+        fi
+    done
+
+    if ((new_gen > 0)); then
+        notify-send "处理完毕" "新增 $new_gen 张缩略图，准备就绪。" -i checkbox
+    fi
+}
+
+generate_shuffle_icon
+prepare_thumbnails
+
+menu_data=""
+[[ -f "$SHUFFLE_ICON" ]] && menu_data+="img:$SHUFFLE_ICON\x00RANDOM\n"
+
+while read -r img; do
+    [[ -n "$img" ]] || continue
+    filename=$(basename "$img")
+    thumb="$CACHE_DIR/${filename%.*}.png"
+    menu_data+="img:$thumb\x00$img\n"
+done < <(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \))
+
+# 4. 运行 wofi
+selected=$(echo -e "$menu_data" | wofi --show dmenu --cache-file /dev/null --conf <(echo "$DEFAULT_CONFIG"))
+
+[[ -z "$selected" ]] && exit 0
+
+thumbnail_path="${selected#img:}"
+
+if [[ "$thumbnail_path" == "$SHUFFLE_ICON" ]]; then
+    target=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | shuf -n1)
+else
+    original_filename=$(basename "${thumbnail_path%.*}")
+
+    target=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f -name "${original_filename}.*" | head -n1)
+fi
+
+if [[ -f "$target" ]]; then
+    awww img --resize "crop" "$target" --transition-type random --transition-fps 60 --transition-duration 1.5 >/dev/null 2>&1 &
+    notify-send "壁纸已更新" "当前图片: $(basename "$target")" -i "$target" -a "Wallpaper Manager"
+else
+    notify-send "错误" "找不到原图文件。您选择的是:\n$selected \n\n尝试查找的原图路径:\n$target" -u critical
+fi

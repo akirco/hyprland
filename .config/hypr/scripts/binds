@@ -1,40 +1,37 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 check_deps() {
-    if ! command -v yad &> /dev/null; then
-        echo "Error: Please install yad"
-        echo "Arch Linux: sudo pacman -S yad"
-        echo "Ubuntu/Debian: sudo apt install yad"
+    if ! command -v yad &>/dev/null; then
+        echo "Error: Please install yad" >&2
+        echo "Arch Linux: sudo pacman -S yad" >&2
+        echo "Ubuntu/Debian: sudo apt install yad" >&2
         exit 1
     fi
 
-    if ! command -v jq &> /dev/null; then
-        echo "Error: Please install jq"
+    if ! command -v jq &>/dev/null; then
+        echo "Error: Please install jq" >&2
         exit 1
     fi
 
-    if ! command -v hyprctl &> /dev/null; then
-        echo "Error: hyprctl not found, please run in Hyprland session"
+    if ! command -v hyprctl &>/dev/null; then
+        echo "Error: hyprctl not found, please run in Hyprland session" >&2
         exit 1
     fi
 }
 
-# 获取并显示快捷键
-show_binds() {
-    # 从 hyprctl 获取 JSON 数据
+# ----------------------------------------------------------------------
+# Terminal output: tab‑separated (key + TAB + description)
+# ----------------------------------------------------------------------
+get_formatted_binds_terminal() {
     local binds_json
-    binds_json=$(hyprctl binds -j 2>/dev/null)
+    binds_json=$(hyprctl binds -j 2>/dev/null | jq 'map(select(.description != ""))')
 
-    if [[ -z "$binds_json" ]]; then
-        yad --error --text="Cannot get keybindings from hyprctl" \
-            --width=300 --height=150
+    if [[ -z "$binds_json" || "$binds_json" == "[]" ]]; then
+        echo "Cannot get keybindings from hyprctl" >&2
         return 1
     fi
 
-    # 使用 jq 解析并格式化数据 - 确保正确的两列格式
-    local formatted_data
-    formatted_data=$(echo "$binds_json" | jq -r '
-    # 转换 modmask 为可读的修饰键
+    jq -r '
     def modmask_to_string(m):
         if m == 0 then ""
         elif m == 1 then "SHIFT+"
@@ -50,7 +47,6 @@ show_binds() {
         else "??(" + (m|tostring) + ")+"
         end;
 
-    # 转换按键为可读格式（保持英文）
     def key_to_string(k; kc; mouse):
         if mouse == true then
             if k == "mouse:272" then "Mouse Left"
@@ -80,22 +76,85 @@ show_binds() {
         else "Unknown"
         end;
 
-    # 格式化输出：按键组合 + TAB + 描述
+    .[] |
+    (modmask_to_string(.modmask) + key_to_string(.key; .keycode; .mouse)) + "\t" + .description
+    ' <<<"$binds_json"
+}
+
+# ----------------------------------------------------------------------
+# YAD output: uses the original working format (newline between key and description)
+# ----------------------------------------------------------------------
+show_binds() {
+    local binds_json
+    binds_json=$(hyprctl binds -j 2>/dev/null | jq 'map(select(.description != ""))')
+
+    if [[ -z "$binds_json" ]]; then
+        yad --error --text="Cannot get keybindings from hyprctl" \
+            --width=300 --height=150
+        return 1
+    fi
+
+    # Original formatting: key on one line, description on the next line
+    local formatted_data
+    formatted_data=$(echo "$binds_json" | jq -r '
+    def modmask_to_string(m):
+        if m == 0 then ""
+        elif m == 1 then "SHIFT+"
+        elif m == 4 then "CTRL+"
+        elif m == 5 then "CTRL+SHIFT+"
+        elif m == 8 then "ALT+"
+        elif m == 9 then "ALT+SHIFT+"
+        elif m == 64 then "SUPER+"
+        elif m == 65 then "SUPER+SHIFT+"
+        elif m == 68 then "SUPER+CTRL+"
+        elif m == 69 then "SUPER+CTRL+SHIFT+"
+        elif m == 72 then "ALT+SUPER+"
+        else "??(" + (m|tostring) + ")+"
+        end;
+
+    def key_to_string(k; kc; mouse):
+        if mouse == true then
+            if k == "mouse:272" then "Mouse Left"
+            elif k == "mouse:273" then "Mouse Right"
+            else k
+            end
+        elif k != "" then
+            if k == "SPACE" then "Space"
+            elif k == "return" then "Enter"
+            elif k == "up" then "Up"
+            elif k == "down" then "Down"
+            elif k == "left" then "Left"
+            elif k == "right" then "Right"
+            elif k == "TAB" then "Tab"
+            elif k == "F4" then "F4"
+            else k
+            end
+        elif kc != 0 then
+            if kc == 121 then "F1"
+            elif kc == 122 then "F2"
+            elif kc == 123 then "F3"
+            elif kc == 232 then "F7"
+            elif kc == 233 then "F8"
+            elif kc == 256 then "F13"
+            else "Key" + (kc|tostring)
+            end
+        else "Unknown"
+        end;
+
     .[] |
     (modmask_to_string(.modmask) + key_to_string(.key; .keycode; .mouse)) + "\n" + .description
     ')
 
-    # 检查是否成功解析数据
     if [[ -z "$formatted_data" ]]; then
         yad --error --text="Cannot parse keybindings data" --width=300 --height=100
         return 1
     fi
 
-    # 统计绑定数量
     local count
-    count=$(echo "$formatted_data" | wc -l)
+    count=$(echo "$formatted_data" | grep -c '^') # count lines, but we have two lines per binding
+    count=$((count / 2))
 
-    # 显示列表 - 只显示两列
+    # Original YAD command (no separator, works because of the newline pattern)
     echo "$formatted_data" | yad --list \
         --title="Hyprland Keybinds ($count)" \
         --width=1250 \
@@ -112,16 +171,20 @@ show_binds() {
         --scale=1.5
 
     local ret=$?
-
     if [[ $ret -eq 1 ]]; then
-        show_binds
+        show_binds # refresh
     fi
 }
 
-# 主程序
+# ----------------------------------------------------------------------
 main() {
     check_deps
-    show_binds
+
+    if [[ "$1" == "--yad" ]]; then
+        show_binds
+    else
+        get_formatted_binds_terminal
+    fi
 }
 
-main
+main "$@"

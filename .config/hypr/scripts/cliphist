@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+
+# ================================
+# Config Area
+# ================================
+
+# Path config
+VIDEO_DOWNLOAD_DIR="${XDG_DOWNLOAD_DIR:-$HOME/Downloads}/Videos"
+IMAGE_DOWNLOAD_DIR="${XDG_DOWNLOAD_DIR:-$HOME/Downloads}/Images"
+
+PROXY_ARGS="--proxy 127.0.0.1:7890"
+# External command dependencies
+MEDIA_PLAYER="mpv"
+VIDEO_DOWNLOADER="yt-dlp"
+IMAGE_DOWNLOADER="gallery-dl"
+TERMINAL_EMULATOR="foot"
+GIST_CLI_CMD="gh"
+
+# Progress notification update interval (seconds)
+PROGRESS_UPDATE_INTERVAL=1
+
+# ================================
+# Helper Functions
+# ================================
+
+check_cmd() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+detect_url_type() {
+    local url="$1"
+
+    if [[ ! "$url" =~ ^https?:// ]]; then
+        echo "text"
+        return
+    fi
+
+    local video_domains="(youtube\.com|youtu\.be|bilibili\.com|vimeo\.com|twitch\.tv|tiktok\.com|twitter\.com|x\.com|instagram\.com|facebook\.com|reddit\.com|redd\.it|pornhub\.com|xvideos\.com|dailymotion\.com|rumble\.com|odysee\.com|bitchute\.com|streamable\.com|ok\.ru|vk\.com|nicovideo\.jp|youku\.com|iqiyi\.com|douyin\.com|kuaishou\.com|weibo\.com)"
+    local image_domains="(imgur\.com|i\.redd\.it|flickr\.com|500px\.com|unsplash\.com|pexels\.com|pixiv\.net|deviantart\.com|artstation\.com|pinimg\.com|pinterest\.com|gfycat\.com|redgifs\.com|giphy\.com|tenor\.com|wallhaven\.cc|danbooru\.donmai\.us|gelbooru\.com|e621\.net|nhentai\.net|pixhost\.to|imagetwist\.com|imagevenue\.com|postimg\.cc|imgbb\.com|catbox\.moe|lensdump\.com)"
+
+    shopt -s nocasematch
+
+    if [[ "$url" =~ $video_domains ]]; then
+        echo "video"
+    elif [[ "$url" =~ $image_domains ]]; then
+        echo "image"
+    else
+        echo "link"
+    fi
+
+    shopt -u nocasematch
+}
+
+generate_notify_id() {
+    echo $(($$ + RANDOM))
+}
+
+# ================================
+# Thumbnail Functions (from cliphist)
+# ================================
+
+show_with_thumbnail() {
+    local thumb_dir="${XDG_CACHE_HOME:-$HOME/.cache}/cliphist/thumbs"
+    mkdir -p "$thumb_dir"
+
+    cliphist_list="$(cliphist list)"
+
+    for thumb in "$thumb_dir"/*; do
+        clip_id="${thumb##*/}"
+        clip_id="${clip_id%.*}"
+        check=$(rg <<<"$cliphist_list" "^$clip_id\s")
+        if [ -z "$check" ]; then
+            >&2 rm -v "$thumb"
+        fi
+    done
+
+    read -r -d '' prog <<EOF
+/^[0-9]+\s<meta http-equiv=/ { next }
+match(\$0, /^([0-9]+)\s(\[\[\s)?binary.*(jpg|jpeg|png|bmp)/, grp) {
+    image = grp[1]"."grp[3]
+    system("[ -f $thumb_dir/"image" ] || echo " grp[1] "\\\\\t | cliphist decode | magick - -resize '256x256>' $thumb_dir/"image )
+    print "img:$thumb_dir/"image
+    next
+}
+1
+EOF
+
+    choice=$(gawk <<<$cliphist_list "$prog" | wofi -I --dmenu --cache-file=/dev/null -Dimage_size=100 -Dynamic_lines=true)
+
+    [ -z "$choice" ] && exit 1
+
+    if [ "${choice::4}" = "img:" ]; then
+        thumb_file="${choice:4}"
+        clip_id="${thumb_file##*/}"
+        clip_id="${clip_id%.*}\t"
+    else
+        clip_id="${choice}"
+    fi
+
+    printf "$clip_id" | cliphist decode
+}
+
+# ================================
+# Download Functions
+# ================================
+
+download_video() {
+    local url="$1"
+    local dir="$2"
+    local notify_id="$3"
+
+    if ! check_cmd "$VIDEO_DOWNLOADER"; then
+        notify-send -u critical "Missing Dependency" "Please install $VIDEO_DOWNLOADER first"
+        return 1
+    fi
+
+    local last_update=0 current_time percent_int title="" status="downloading"
+
+    $VIDEO_DOWNLOADER \
+        -P "$dir" \
+        "$PROXY_ARGS" \
+        --newline \
+        --no-colors \
+        --progress-template "download:[progress] %(progress._percent_str)s %(progress.speed_str)s ETA:%(progress.eta_str)s" \
+        --progress-template "download-title:[title] %(info.title).50s" \
+        "$url" 2>&1 |
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^\[title\]\ (.+)$ ]]; then
+                title="${BASH_REMATCH[1]}"
+                continue
+            fi
+
+            if [[ "$line" =~ ^\[progress\]\ *([0-9.]+)%\ *([^ ]*)\ *ETA:(.*)$ ]]; then
+                local percent="${BASH_REMATCH[1]}"
+                local speed="${BASH_REMATCH[2]}"
+                local eta="${BASH_REMATCH[3]}"
+
+                current_time=$(date +%s)
+                if ((current_time - last_update >= PROGRESS_UPDATE_INTERVAL)); then
+                    last_update=$current_time
+                    percent_int=${percent%.*}
+
+                    local body="${title:+$title\n}${percent}% | ${speed} | ${eta}"
+
+                    notify-send -r "$notify_id" -h "int:value:${percent_int:-0}" \
+                        -h "string:category:transfer" -t 0 "Downloading Video" "$body"
+                fi
+            fi
+
+            if [[ "$line" =~ "has already been downloaded" ]]; then
+                notify-send -r "$notify_id" "Info" "File already exists"
+            elif [[ "$line" =~ "Merging formats" ]]; then
+                notify-send -r "$notify_id" -h "int:value:100" -t 0 "Processing" "Merging audio and video..."
+            fi
+        done
+    return ${PIPESTATUS[0]}
+}
+
+download_image() {
+    local url="$1"
+    local dir="$2"
+    local notify_id="$3"
+
+    if ! check_cmd "$IMAGE_DOWNLOADER"; then
+        notify-send -u critical "Missing Dependency" "Please install $IMAGE_DOWNLOADER first"
+        return 1
+    fi
+
+    local count=0 last_update=0 current_time
+
+    $IMAGE_DOWNLOADER "$url" "$PROXY_ARGS" -d "$dir" >~/log 2>&1 |
+        while IFS= read -r line; do
+            if [[ "$line" =~ \.(jpg|jpeg|png|gif|webp)$ ]]; then
+                ((count++))
+                current_time=$(date +%s)
+                if ((current_time - last_update >= PROGRESS_UPDATE_INTERVAL)); then
+                    last_update=$current_time
+                    notify-send -r "$notify_id" -h "string:category:transfer" \
+                        -t 0 "Downloading Image" "Downloaded ${count} images..."
+                fi
+            fi
+        done
+    return ${PIPESTATUS[0]}
+}
+
+# ================================
+# Action Functions
+# ================================
+
+action_copy() {
+    printf '%s' "$1" | wl-copy
+    notify-send "Copied" "Content copied to clipboard" -t 2000
+}
+
+action_open_browser() {
+    local content="$1"
+    if [[ "$(detect_url_type "$content")" != "text" ]]; then
+        xdg-open "$content" >/dev/null 2>&1 &
+        notify-send "Open Link" "Opening in browser..." -t 2000
+    else
+        notify-send "Error" "Selected content is not a valid URL" -t 3000
+    fi
+}
+
+action_download_media() {
+    local content="$1"
+    local type="$(detect_url_type "$content")"
+    local notify_id=$(generate_notify_id)
+
+    if [[ "$type" == "video" ]]; then
+        mkdir -p "$VIDEO_DOWNLOAD_DIR"
+        # notify-send -r "$notify_id" -h "int:value:0" -t 0 "Preparing Download" "Parsing video info..."
+
+        (
+            if download_video "$content" "$VIDEO_DOWNLOAD_DIR" "$notify_id"; then
+                notify-send -r "$notify_id" -h "int:value:100" -t 5000 "Download Complete" "Saved to: $VIDEO_DOWNLOAD_DIR"
+            else
+                notify-send -r "$notify_id" -u critical -t 5000 "Download Failed" "Please check URL or network"
+            fi
+        ) &
+        disown
+
+    elif [[ "$type" == "image" ]]; then
+        mkdir -p "$IMAGE_DOWNLOAD_DIR"
+        # notify-send -r "$notify_id" -t 0 "Preparing Download" "Parsing image..."
+
+        (
+            if download_image "$content" "$IMAGE_DOWNLOAD_DIR" "$notify_id"; then
+                notify-send -r "$notify_id" -t 5000 "Download Complete" "Saved to: $IMAGE_DOWNLOAD_DIR"
+            else
+                notify-send -r "$notify_id" -u critical -t 5000 "Download Failed" "Please check URL or network"
+            fi
+        ) &
+        disown
+    else
+        notify-send -u critical "Error" "Unsupported URL type" -t 3000
+    fi
+}
+
+action_play_media() {
+    local content="$1"
+    if [[ "$(detect_url_type "$content")" == "video" ]]; then
+        if ! check_cmd "$MEDIA_PLAYER"; then
+            notify-send -u critical "Missing Dependency" "Please install $MEDIA_PLAYER first"
+            return
+        fi
+        notify-send "Starting Playback" "Invoking $MEDIA_PLAYER..." -t 2000
+        $MEDIA_PLAYER "$content" >/dev/null 2>&1 &
+        disown
+    else
+        notify-send -u critical "Error" "Unrecognized video link" -t 3000
+    fi
+}
+
+action_upload_gist() {
+    local content="$1"
+    local notify_id=$(generate_notify_id)
+
+    if ! check_cmd "$GIST_CLI_CMD"; then
+        notify-send -u critical "Warning" "Command $GIST_CLI_CMD not found" -t 3000
+        return 1
+    fi
+
+    notify-send -r "$notify_id" -t 0 "Uploading" "Uploading to Gist..."
+
+    (
+        local result
+        if result=$(printf '%s' "$content" | $GIST_CLI_CMD gist create -f "clipboard-$(date +%s).txt" 2>&1); then
+            notify-send -r "$notify_id" -t 5000 "Upload Success" "${result}\n(Link copied automatically)"
+            printf '%s' "$result" | wl-copy
+        else
+            notify-send -r "$notify_id" -u critical -t 5000 "Upload Failed" "$result"
+        fi
+    ) &
+    disown
+}
+
+action_delete_history() {
+    printf '%s' "$1" | cliphist delete
+    notify-send "Deleted" "Removed from history" -t 2000
+}
+
+action_view_content() {
+    local content="$1"
+
+    if ((${#content} > 200)); then
+        local tmpfile=$(mktemp --suffix=".txt")
+        printf '%s' "$content" >"$tmpfile"
+
+        if [[ "$TERMINAL_EMULATOR" == "kitty" ]]; then
+            $TERMINAL_EMULATOR --hold sh -c "bat '$tmpfile'; rm -f '$tmpfile'" &
+            disown
+        elif [[ "$TERMINAL_EMULATOR" == "foot" ]]; then
+            $TERMINAL_EMULATOR --hold sh -c "bat '$tmpfile'; rm -f '$tmpfile'" &
+            disown
+        else
+            $TERMINAL_EMULATOR -e sh -c "bat '$tmpfile'; rm -f '$tmpfile'" &
+            disown
+        fi
+    else
+        notify-send "Content Preview" "$content" -t 5000
+    fi
+}
+
+# ================================
+# Main Program
+# ================================
+
+MODE="thumbnail"
+if [ "$1" = "-m" ] || [ "$1" = "--menu" ]; then
+    MODE="menu"
+fi
+
+for cmd in cliphist wofi wl-copy; do
+    if ! check_cmd "$cmd"; then
+        notify-send -u critical "Critical Error" "Missing core dependency: $cmd"
+        exit 1
+    fi
+done
+
+if [ "$MODE" = "thumbnail" ]; then
+    content=$(show_with_thumbnail)
+    [ -z "$content" ] && exit 1
+    printf '%s' "$content" | wl-copy
+    notify-send "Copied" "Content copied to clipboard" -t 2000
+    exit 0
+fi
+
+selection=$(cliphist list | wofi --dmenu \
+    --prompt="Clipboard History" \
+    --insensitive)
+
+ret=$?
+
+[[ -z "$selection" || $ret -eq 1 ]] && exit 0
+
+content="$(printf '%s' "${selection}" | cliphist decode)"
+
+case "$ret" in
+0)
+    action=$(printf '%s\n' \
+        "1. Copy to clipboard" \
+        "2. Open in browser" \
+        "3. Download media" \
+        "4. $MEDIA_PLAYER playback" \
+        "5. Upload to Gist" \
+        "6. View long content" \
+        "7. Delete from history" |
+        wofi --dmenu --prompt="Select action:")
+
+    case "${action}" in
+    *"Copy"*) action_copy "${content}" ;;
+    *"Open"*) action_open_browser "${content}" ;;
+    *"Download"*) action_download_media "${content}" ;;
+    *"Play"*) action_play_media "${content}" ;;
+    *"Gist"*) action_upload_gist "${content}" ;;
+    *"View"*) action_view_content "${content}" ;;
+    *"Delete"*) action_delete_history "${selection}" ;;
+    esac
+    ;;
+esac

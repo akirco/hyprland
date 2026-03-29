@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Get the current scrolling direction as a plain string
+current=$(hyprctl getoption scrolling:direction -j | jq -r '.str')
+
+# Toggle: if it's "left", set to "down"; otherwise set to "left"
+if [ "$current" = "left" ]; then
+    hyprctl keyword scrolling:direction down
+    new="down"
+else
+    hyprctl keyword scrolling:direction left
+    new="left"
+fi
+
+notify-send "Scrolling Direction" "Changed to $new"
+
