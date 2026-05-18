@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<opml version="1.0">
+    <head>
+        <title>Generated from bulletty</title>
+        <url>https://github.com/CrociDB/bulletty</url>
+    </head>
+    <body>
+        <outline text="General" title="General">
+            <outline text="果壳网 科学人" title="果壳网 科学人" description="果壳网 科学人 - Powered by RSSHub" xmlUrl="https://rss.aishort.top/?type=guokr" type="rss" />
+            <outline text="小众软件" title="小众软件" description="分享免费、小巧、实用、有趣、绿色的软件" xmlUrl="https://feeds.appinn.com/appinns/" type="rss" />
+            <outline text="News Hacker | 极客洞察" title="News Hacker | 极客洞察" description="Hacker News 热门内容的摘要与观点精选" xmlUrl="https://api.newshacker.me/rss" type="rss" />
+            <outline text="阮一峰的网络日志" title="阮一峰的网络日志" description="Ruan YiFeng's Blog" xmlUrl="https://feeds.feedburner.com/ruanyifeng" type="rss" />
+            <outline text="Decohack" title="Decohack" description="独立开发者灵感周刊" xmlUrl="https://decohack.com/feed/" type="rss" />
+            <outline text="V2EX" title="V2EX" description="way to explore" xmlUrl="http://www.v2ex.com/index.xml" type="rss" />
+            <outline text="30 seconds of code" title="30 seconds of code" description="Coding articles to level up your development skills" xmlUrl="https://www.30secondsofcode.org/feed.xml" type="rss" />
+            <outline text="V2EX - 技术" title="V2EX - 技术" description="way to explore" xmlUrl="https://www.v2ex.com/feed/tab/tech.xml" type="rss" />
+        </outline>
+    </body>
+</opml>

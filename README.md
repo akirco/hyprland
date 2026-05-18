@@ -173,7 +173,7 @@ The `apps` file contains a comprehensive list of packages used in this setup, in
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/hyprland-dotfiles.git
+   git clone https://github.com/akirco/hyprland.git
    ```
 
 2. Backup your existing configuration:

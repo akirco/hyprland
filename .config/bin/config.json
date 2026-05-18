@@ -371,16 +371,6 @@
             "package_path": "./vsd",
             "pinned": false
         },
-        "/home/neil/.local/bin/vt": {
-            "path": "/home/neil/.local/bin/vt",
-            "remote_name": "vt",
-            "version": "v0.1.0",
-            "hash": "b236b5d60f52ca93a067727cf329e2e98306c9e61cad8ea60f4ffb53e67e09ba",
-            "url": "https://github.com/akirco/vt/releases/tag/v0.1.0",
-            "provider": "github",
-            "package_path": "vt",
-            "pinned": false
-        },
         "/home/neil/.local/bin/workspace-launcher": {
             "path": "/home/neil/.local/bin/workspace-launcher",
             "remote_name": "workspace-launcher_2.3.0_linux_amd64",
