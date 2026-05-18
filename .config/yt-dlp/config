@@ -1,6 +1,1 @@
---sub-lang "en"
---write-auto-subs
---embed-subs
---force-ipv4
-
--o ~/Videos/YouTube/%(title)s.%(ext)s
+-o ~/Videos/youtube/%(title)s.%(ext)s

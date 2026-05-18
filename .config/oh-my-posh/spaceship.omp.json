@@ -98,9 +98,9 @@
       "newline": true,
       "segments": [
         {
-          "foreground": "lightGreen",
+          "foreground": "#00A783",
           "style": "plain",
-          "template": "\u276f",
+          "template": "❱",
           "type": "text"
         }
       ],

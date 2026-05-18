@@ -1,0 +1,7 @@
+# Tock Configuration File
+
+font = "/home/neil/.config/tock/fonts/ANSI_Shadow.flf"
+
+color = ""
+
+hidden_help = true

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "1768218652632904306",
+    "executedAt": "2026-01-12T19:50:52.632906623+08:00",
+    "environment": "",
+    "requestName": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    "filePath": "",
+    "method": "POST",
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    "status": "400 Bad Request",
+    "statusCode": 400,
+    "duration": 844253293,
+    "bodySnippet": "{\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"API key not valid. Please pass a valid API key.\",\n    \"status\": \"INVALID_ARGUMENT\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n        \"reason\": \"API_KEY_INVALID\",\n        \"domain\": \"googleapis.com\",\n        \"metadata\": {\n          \"service\": \"generativelanguage.googleapis.com\"\n        }\n      },\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.LocalizedMessage\",\n        \"locale\": \"en-US\",\n        \"message\": \"API key not valid. Please pass a valid API key.\"\n      }\n    ]\n  }\n}\n",
+    "requestText": "POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent\nContent-Type: application/json\nX-Goog-Api-Key: •••\n\n{\n    \"contents\": [\n      {\n        \"parts\": [\n          {\n            \"text\": \"Explain how AI works in a few words\"\n          }\n        ]\n      }\n    ]\n  }\n"
+  },
+  {
+    "id": "1768157532849547825",
+    "executedAt": "2026-01-12T02:52:12.849550216+08:00",
+    "environment": "",
+    "requestName": "http://localhost:4000",
+    "filePath": "/home/neil/sse.http",
+    "method": "GET",
+    "url": "http://localhost:4000",
+    "status": "200 OK",
+    "statusCode": 200,
+    "duration": 2119279,
+    "bodySnippet": "\n      \u003c!DOCTYPE html\u003e\n      \u003chtml\u003e\n      \u003chead\u003e\n        \u003ctitle\u003eSSE Test Client\u003c/title\u003e\n      \u003c/head\u003e\n      \u003cbody\u003e\n        \u003ch1\u003eSSE Test Client\u003c/h1\u003e\n        \u003cbutton id=\"startBtn\"\u003eStart Receiving\u003c/button\u003e\n        \u003cbutton id=\"stopBtn\"\u003eStop Receiving\u003c/button\u003e\n        \u003cdiv id=\"output\" style=\"white-space: pre-wrap; margin-top: 20px; padding: 10px; border: 1px solid #ccc; max-height: 500px; overflow-y: auto;\"\u003e\u003c/div\u003e\n\n        \u003cscript\u003e\n          let eventSource = null;\n          const output = document.getElementById('output');\n          const startBtn = document.getElementById('startBtn');\n          const stopBtn = document.getElementById('stopBtn');\n\n          startBtn.addEventListener('click', () =\u003e {\n            if (eventSource) {\n              eventSource.close();\n            }\n\n            eventSource = new EventSource('/sse');\n\n            eventSource.onmessage = (event) =\u003e {\n              const message = event.data;\n\n              // Add the received message to the output div\n              const messageElement = document.createElement('p');\n              messageElement.textContent = message;\n              output.appendChild(messageElement);\n\n              // Scroll to bottom to see latest messages\n              output.scrollTop = output.scrollHeight;\n\n              // Stop if we receive the end marker\n              if (message === '[END]') {\n                eventSource.close();\n                eventSource = null;\n              }\n            };\n\n            eventSource.onerror = (error) =\u003e {\n              console.error('SSE error:', error);\n              eventSource.close();\n              eventSource = null;\n            };\n          });\n\n          stopBtn.addEventListener('click', () =\u003e {\n            if (eventSource) {\n              eventSource.close();\n              eventSource = null;\n            }\n          });\n        \u003c/script\u003e\n      \u003c/body\u003e\n      \u003c/html\u003e\n    ",
+    "requestText": "GET http://localhost:4000\n\n"
+  },
+  {
+    "id": "1768135918526564075",
+    "executedAt": "2026-01-11T20:51:58.526566661+08:00",
+    "environment": "",
+    "requestName": "http://localhost:3000/sse",
+    "filePath": "/home/neil/sse.http",
+    "method": "GET",
+    "url": "http://localhost:3000/sse",
+    "status": "200 OK",
+    "statusCode": 200,
+    "duration": 14479906833,
+    "bodySnippet": "data: Default\n\ndata:  \n\ndata: to us\n\ndata: ing \n\ndata: Bun i\n\ndata: nstead \n\ndata: of Nod\n\ndata: e.js\n\ndata: .\n\ndata: \n\ndata: - \n\ndata: Use `bun \u003c\n\ndata: f\n\ndata: ile\u003e`\n\ndata:  i\n\ndata: nstea\n\ndata: d of `node\n\ndata:  \n\ndata: \u003cfile\u003e` or\n\ndata:  `\n\ndata: ts-node\n\ndata:  \u003cfi\n\ndata: le\u003e`\n\ndata: \n\ndata: - Use \n\ndata: `bun t\n\ndata: est` \n\ndata: inst\n\ndata: ead of `je\n\ndata: st` or `v\n\ndata: ites\n\ndata: t`\n\ndata: \n\ndata: - Use `bu\n\ndata: n bui\n\ndata: l\n\ndata: d \u003c\n\ndata: fil\n\ndata: e.html\n\ndata: |fi\n\ndata: le.\n\ndata: ts|file.c\n\ndata: ss\u003e`\n\ndata:  instea\n\ndata: d \n\ndata: o\n\ndata: f `web\n\ndata: p\n\ndata: ack\n\ndata: ` or `e\n\ndata: sbui\n\ndata: ld`\n\ndata: \n\ndata: - Us\n\ndata: e `bun ins\n\ndata: tall` i\n\ndata: nstead \n\ndata: o\n\ndata: f `npm i\n\ndata: nst\n\ndata: all` or `y\n\ndata: arn insta\n\ndata: ll`\n\ndata:  or `pn\n\ndata: pm inst\n\ndata: all`\n\ndata: \n\ndata: - Use\n\ndata:  `b\n\ndata: un run \n\ndata: \u003cscri\n\ndata: p\n\ndata: t\u003e`\n\ndata:  instead\n\ndata:  o\n\ndata: f `npm\n\ndata:  run \u003cscri\n\ndata: p\n\ndata: t\u003e` or \n\ndata: `y\n\ndata: arn r\n\ndata: un\n\ndata:  \u003cscript\n\ndata: \u003e` or `pnp\n\ndata: m run \u003cs\n\ndata: cript\u003e`\n\ndata: \n\ndata: - B\n\ndata: u\n\ndata: n a\n\ndata: utomat\n\ndata: ically \n\ndata: loads .e\n\ndata: nv, so \n\ndata: don't\n\ndata:  use dot\n\ndata: env.\n\ndata: \n\ndata: ## APIs\n\ndata: \n\ndata: - `Bun.ser\n\ndata: ve()` su\n\ndata: pport\n\ndata: s W\n\ndata: ebSocket\n\ndata: s, HTTPS,\n\ndata:  and rout\n\ndata: es. Don't\n\ndata:  use `e\n\ndata: xpr\n\ndata: ess`.\n\ndata: \n\ndata: - \n\ndata: `bu\n\ndata: n:s\n\ndata: qlite` fo\n\ndata: r \n\ndata: SQL\n\ndata: i\n\ndata: te. Don't\n\ndata:  use `bet\n\ndata: ter-sqlit\n\ndata: e3`.\n\ndata: \n\ndata: - `Bun.r\n\ndata: ed\n\ndata: i\n\ndata: s` for Re\n\ndata: dis. \n\ndata: Don't u\n\ndata: se `i\n\ndata: oredis`\n\ndata: .\n\ndata: \n\ndata: - `B\n\ndata: un.sql` fo\n\ndata: r Postgres\n\ndata: . Do\n\ndata: n't \n\ndata: use `pg` o\n\ndata: r `\n\ndata: postgr\n\ndata: es.js`.\n\ndata: \n\ndata: - \n\ndata: `WebS\n\ndata: o\n\ndata: cket` i\n\ndata: s\n\ndata:  bu\n\ndata: ilt-in. \n\ndata: Don't u\n\ndata: se\n\ndata:  `w\n\ndata: s`.\n\ndata: \n\ndata: - P",
+    "requestText": "GET http://localhost:3000/sse\n\n"
+  },
+  {
+    "id": "1767257959409318985",
+    "executedAt": "2026-01-01T16:59:19.409321516+08:00",
+    "environment": "",
+    "requestName": "https://ikunzyapi.com/api.php/provide/vod",
+    "filePath": "",
+    "method": "GET",
+    "url": "https://ikunzyapi.com/api.php/provide/vod",
+    "status": "522 ",
+    "statusCode": 522,
+    "duration": 19936834140,
+    "bodySnippet": "error code: 522",
+    "requestText": "GET https://ikunzyapi.com/api.php/provide/vod\n\n"
+  },
+  {
+    "id": "1766920814134425156",
+    "executedAt": "2025-12-28T19:20:14.134427568+08:00",
+    "environment": "",
+    "requestName": "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd",
+    "filePath": "",
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd",
+    "status": "200 OK",
+    "statusCode": 200,
+    "duration": 299301724,
+    "bodySnippet": "{\"code\":0,\"message\":\"OK\",\"ttl\":1,\"data\":{\"item\":[{\"id\":115787889117390,\"bvid\":\"BV1pDBiBBEBi\",\"cid\":35003305036,\"goto\":\"av\",\"uri\":\"https://www.bilibili.com/video/BV1pDBiBBEBi\",\"pic\":\"http://i0.hdslb.com/bfs/archive/c10b0c0da15e69cf5f8c629c5ab50b0cc48aaffc.jpg\",\"pic_4_3\":\"\",\"title\":\"【野心家｜张函瑞】4K精剪直拍（含字幕）\",\"duration\":278,\"pubdate\":1766784971,\"owner\":{\"mid\":3546943494031804,\"name\":\"Karmaismycat\",\"face\":\"https://i1.hdslb.com/bfs/face/17fc7923f3b58f5941fe6eccd2042455e2f7c32c.jpg\"},\"stat\":{\"view\":121898,\"like\":16423,\"danmaku\":7609,\"vt\":0},\"av_feature\":null,\"is_followed\":0,\"rcmd_reason\":null,\"show_info\":0,\"track_id\":\"\",\"pos\":0,\"room_info\":null,\"ogv_info\":null,\"business_info\":null,\"is_stock\":0,\"enable_vt\":0,\"vt_display\":\"\",\"dislike_switch\":0,\"dislike_switch_pc\":0},{\"id\":115790388927131,\"bvid\":\"BV18QBkBwE5S\",\"cid\":35011562236,\"goto\":\"av\",\"uri\":\"https://www.bilibili.com/video/BV18QBkBwE5S\",\"pic\":\"http://i1.hdslb.com/bfs/archive/eb5f8f199ac5614b42832868d4cffc5a9b5da19a.jpg\",\"pic_4_3\":\"\",\"title\":\"吃鸡蛋万能公式！按这个做法一天真能吃40个！\",\"duration\":370,\"pubdate\":1766829600,\"owner\":{\"mid\":3334179,\"name\":\"我的样子平平无奇\",\"face\":\"https://i0.hdslb.com/bfs/face/5c982dc61c92d7059ce32f94cd095b54e02729f7.jpg\"},\"stat\":{\"view\":127683,\"like\":8902,\"danmaku\":470,\"vt\":0},\"av_feature\":null,\"is_followed\":0,\"rcmd_reason\":null,\"show_info\":0,\"track_id\":\"\",\"pos\":0,\"room_info\":null,\"ogv_info\":null,\"business_info\":null,\"is_stock\":0,\"enable_vt\":0,\"vt_display\":\"\",\"dislike_switch\":0,\"dislike_switch_pc\":0},{\"id\":115772269594497,\"bvid\":\"BV1vxBVB4EaG\",\"cid\":34941436691,\"goto\":\"av\",\"uri\":\"https://www.bilibili.com/video/BV1vxBVB4EaG\",\"pic\":\"http://i2.hdslb.com/bfs/archive/3cc2ade3c2f2319069389751c0277de831a51aaf.jpg\",\"pic_4_3\":\"\",\"title\":\"【鸣潮 3.0】星炬学院变神人市场？库洛藏的这些彩蛋 + 梗 我愿称这版本为整活巅峰\",\"duration\":888,\"pubdate\":1766721600,\"owner\":{\"mid\":1632300806,\"name\":\"幻灵彡\",\"face\":\"https:",
+    "requestText": "GET https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd\n\n"
+  }
+]

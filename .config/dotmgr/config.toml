@@ -1,0 +1,2 @@
+sync_dir = "/home/neil/Downloads/github/hyprland"
+synced_ignores = [".git", ".github", "README.md", "LICENSE","screenshot"]

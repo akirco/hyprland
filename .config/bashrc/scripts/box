@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+# H='-', V='|', TL='+', TR='+', BL='+', BR='+'
+TL='┌' # Top Left
+TR='┐' # Top Right
+BL='└' # Bottom Left
+BR='┘' # Bottom Right
+H='─'  # Horizontal
+V='│'  # Vertical
+
+# 用法: draw_box <row> <col> <width> <height> [title]
+draw_box() {
+    local row=$1
+    local col=$2
+    local width=$3
+    local height=$4
+    local title=${5:-""} # 默认为空字符串
+
+    # 检查最小尺寸
+    if [[ $width -lt 2 ]] || [[ $height -lt 2 ]]; then
+        echo "Error: Width and height must be at least 2."
+        return 1
+    fi
+
+    # 1. 绘制顶部边框
+    tput cup $row $col
+    printf "%s" "$TL"
+
+    # 填充中间的横线
+    # 如果宽度为 10，中间需要 8 个横线
+    local middle_width=$((width - 2))
+    # 如果有标题，计算标题左右的空间
+    if [[ -n "$title" ]]; then
+        local title_len=${#title}
+        # 确保盒子够宽放标题
+        if [[ $middle_width -lt $((title_len + 2)) ]]; then
+            # 空间不够，截断标题
+            title="${title:0:$((middle_width - 2))}"
+            title_len=${#title}
+        fi
+        local left_space=$(((middle_width - title_len) / 2))
+        local right_space=$((middle_width - title_len - left_space))
+
+        printf "%*s" $left_space "" | tr ' ' "$H"
+        printf " %s " "$title" # 标题左右加空格看起来更舒适
+        printf "%*s" $right_space "" | tr ' ' "$H"
+    else
+        printf "%*s" $middle_width "" | tr ' ' "$H"
+    fi
+
+    printf "%s" "$TR"
+
+    # 2. 绘制中间的行 (垂直边框 + 内容)
+    # 循环从 row+1 到 row+height-2
+    for ((i = 1; i < height - 1; i++)); do
+        tput cup $((row + i)) $col
+        printf "%s" "$V"
+        # 中间留空，或者填充背景色
+        tput cup $((row + i)) $((col + width - 1))
+        printf "%s" "$V"
+    done
+
+    # 3. 绘制底部边框
+    tput cup $((row + height - 1)) $col
+    printf "%s" "$BL"
+    printf "%*s" $middle_width "" | tr ' ' "$H"
+    printf "%s" "$BR"
+
+    # 恢复光标（可选，避免影响后续输出）
+    tput sgr0
+}
+
+color_red() { tput setaf 1; }
+color_green() { tput setaf 2; }
+color_blue() { tput setaf 4; }
+color_yellow() { tput setaf 3; }
+reset_color() { tput sgr0; }
+
+# 主程序
+main() {
+    # 1. 清屏
+    tput clear
+
+    # 获取终端尺寸
+    lines=$(tput lines)
+    cols=$(tput cols)
+
+    # 计算中心位置
+    center_row=$((lines / 2))
+    center_col=$((cols / 2))
+
+    # 2. 绘制一个简单的框 (左上角)
+    draw_box 2 2 30 10
+
+    # 3. 绘制一个带标题的框 (中心)
+    # 使用颜色绘制框内的文字
+    draw_box $((center_row - 5)) $((center_col - 20)) 40 10 "主菜单"
+
+    # 在框内绘制一些文本
+    tput cup $((center_row - 3)) $((center_col - 15))
+    color_green
+    echo "[1] 开始新游戏"
+
+    tput cup $((center_row - 1)) $((center_col - 15))
+    reset_color
+    echo "[2] 加载存档"
+
+    tput cup $((center_row + 1)) $((center_col - 15))
+    color_red
+    echo "[Q] 退出程序"
+    reset_color
+
+    # 4. 绘制一个位于右下角的框
+    local box_width=20
+    local box_height=6
+    draw_box $((lines - box_height - 2)) $((cols - box_width - 2)) $box_width $box_height "状态栏"
+
+    tput cup $((lines - box_height)) $((cols - box_width))
+    color_blue
+    echo "系统就绪..."
+    reset_color
+
+    # 将光标移动到屏幕最下方，避免遮挡界面
+    tput cup $lines 0
+
+    # 简单的等待输入 (模拟按任意键继续)
+    echo -n "按任意键退出..."
+    read -n 1 -s
+
+    # 程序结束前清屏并恢复光标
+    tput clear
+    tput cup 0 0
+}
+
+main

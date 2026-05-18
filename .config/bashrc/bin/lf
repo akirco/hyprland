@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+
+# ========== 终端控制 ==========
+init_term() {
+    tput smcup # 切换到备用屏幕
+    tput civis # 隐藏光标
+    clear
+}
+
+restore_term() {
+    tput cnorm # 显示光标
+    tput rmcup # 恢复主屏幕
+    clear
+    exit 0
+}
+
+trap restore_term SIGINT
+
+# ========== 文件浏览核心数据 ==========
+current_dir=$(pwd) # 当前工作目录
+files=()           # 当前目录下的条目（文件和目录）
+selected=0         # 当前选中索引
+scroll_offset=0    # 滚动偏移（用于列表很长的情况）
+
+# 读取当前目录内容
+load_dir() {
+    cd "$current_dir" || return
+    mapfile -t files < <(ls -A1 --group-directories-first 2>/dev/null)
+    # 如果ls失败（如权限问题），files可为空
+    if [ ${#files[@]} -eq 0 ]; then
+        files=("(empty)")
+    fi
+    # 重置选中和滚动偏移
+    selected=0
+    scroll_offset=0
+}
+
+# 获取当前选中条目的完整路径
+get_selected_path() {
+    local name="${files[$selected]}"
+    if [[ "$name" == "(empty)" ]]; then
+        echo ""
+    else
+        echo "$current_dir/$name"
+    fi
+}
+
+# ========== UI 绘制 ==========
+draw_ui() {
+    local cols=$(tput cols)
+    local lines=$(tput lines)
+
+    # 三栏宽度（大致均分）
+    local col1_w=$((cols / 3))
+    local col2_w=$((cols / 3))
+    local col3_w=$((cols - col1_w - col2_w))
+
+    local col1_x=0
+    local col2_x=$col1_w
+    local col3_x=$((col1_w + col2_w))
+
+    # ---------- 第一栏：显示当前路径和目录树状提示 ----------
+    tput cup 0 $col1_x
+    # 显示当前路径（截断适应宽度）
+    local path_display="📁 ${current_dir}"
+    printf "\033[1;37m%-*.*s\033[0m" $col1_w $col1_w "$path_display"
+    for ((i = 1; i < lines; i++)); do
+        tput cup $i $col1_x
+        # 父目录提示（简单模拟，可扩展为目录树）
+        if [ $i -eq 1 ]; then
+            printf "\033[90m%-${col1_w}s\033[0m" " Parent: $(dirname "$current_dir")"
+        else
+            printf "%-${col1_w}s" ""
+        fi
+    done
+
+    # ---------- 第二栏：文件列表 ----------
+    local max_display_lines=$((lines - 1)) # 保留第一行给标题？我们直接从第0行开始画文件列表
+    # 调整：从第0行开始画列表，可显示 lines 行
+    local list_start=0
+    local list_end=$((lines - 1))
+
+    # 计算滚动：确保选中项可见
+    if ((selected < scroll_offset)); then
+        scroll_offset=$selected
+    elif ((selected >= scroll_offset + lines)); then
+        scroll_offset=$((selected - lines + 1))
+    fi
+
+    for ((i = 0; i < lines; i++)); do
+        tput cup $i $col2_x
+        local file_idx=$((i + scroll_offset))
+        if [ $file_idx -lt ${#files[@]} ]; then
+            local fname="${files[$file_idx]}"
+            local display_name="$fname"
+            # 目录后加斜杠
+            if [ -d "$current_dir/$fname" ]; then
+                display_name="$fname/"
+            fi
+            # 截断适应宽度
+            display_name="${display_name:0:$col2_w}"
+            if [ $file_idx -eq $selected ]; then
+                # 反白高亮
+                printf "\033[7m%-*s\033[0m" $col2_w "$display_name"
+            else
+                printf "%-*s" $col2_w "$display_name"
+            fi
+        else
+            printf "%-*s" $col2_w ""
+        fi
+    done
+
+    # ---------- 第三栏：预览 ----------
+    local preview_path=$(get_selected_path)
+    tput cup 0 $col3_x
+    if [ -z "$preview_path" ]; then
+        printf "\033[36m%-*s\033[0m" $col3_w " No item selected"
+    else
+        printf "\033[36m%-*.*s\033[0m" $col3_w $col3_w " Preview: ${files[$selected]}"
+    fi
+
+    # 从第1行开始显示预览内容
+    local preview_line=1
+    if [ -n "$preview_path" ]; then
+        if [ -d "$preview_path" ]; then
+            # 目录：显示内部条目统计
+            local count=$(ls -A1 "$preview_path" 2>/dev/null | wc -l)
+            tput cup $preview_line $col3_x
+            printf "%-*s" $col3_w " Directory with $count items"
+            ((preview_line++))
+            # 可继续显示前几个文件
+            ls -A1 "$preview_path" 2>/dev/null | head -n $((lines - preview_line)) | while IFS= read -r item; do
+                [ $preview_line -ge $lines ] && break
+                tput cup $preview_line $col3_x
+                printf "%-*.*s" $col3_w $col3_w "  $item"
+                ((preview_line++))
+            done
+        elif [ -f "$preview_path" ]; then
+            # 文件：显示 file 信息及前几行（如果是文本）
+            local mime=$(file -b --mime-type "$preview_path" 2>/dev/null)
+            tput cup $preview_line $col3_x
+            printf "%-*s" $col3_w " Type: ${mime:-unknown}"
+            ((preview_line++))
+
+            if [[ "$mime" == text/* ]] || [[ "$preview_path" == *.sh ]] || [[ "$preview_path" == *.txt ]]; then
+                tput cup $preview_line $col3_x
+                printf "%-*s" $col3_w " ─── Content preview ───"
+                ((preview_line++))
+                # 显示文件内容（前几行）
+                head -n $((lines - preview_line)) "$preview_path" 2>/dev/null | while IFS= read -r line; do
+                    [ $preview_line -ge $lines ] && break
+                    tput cup $preview_line $col3_x
+                    # 清理控制字符，简单截断
+                    local clean_line=$(echo "$line" | tr -d '\000-\037' | cut -c -$((col3_w - 2)))
+                    printf " %-*.*s" $((col3_w - 1)) $((col3_w - 1)) "$clean_line"
+                    ((preview_line++))
+                done
+            else
+                tput cup $preview_line $col3_x
+                printf "%-*s" $col3_w " (Binary file, no preview)"
+            fi
+        else
+            tput cup $preview_line $col3_x
+            printf "%-*s" $col3_w " Cannot access item"
+        fi
+    fi
+
+    # 清空剩余行
+    for ((i = preview_line; i < lines; i++)); do
+        tput cup $i $col3_x
+        printf "%-*s" $col3_w ""
+    done
+}
+
+# ========== 处理键盘输入 ==========
+handle_input() {
+    local key
+    read -rsn1 key
+
+    case "$key" in
+    $'\x1b') # ESC 序列（处理方向键）
+        read -rsn2 -t 0.001 k1
+        case "$k1" in
+        '[A') # 上箭头
+            ((selected > 0)) && ((selected--))
+            ;;
+        '[B') # 下箭头
+            ((selected < ${#files[@]} - 1)) && ((selected++))
+            ;;
+        esac
+        ;;
+    k) # vim 风格上
+        ((selected > 0)) && ((selected--))
+        ;;
+    j) # vim 风格下
+        ((selected < ${#files[@]} - 1)) && ((selected++))
+        ;;
+    h | $'\x7f') # h 或 Backspace 返回上级
+        current_dir=$(dirname "$current_dir")
+        load_dir
+        ;;
+    l | '') # l 或 Enter 进入目录/打开文件（这里仅实现进入目录，文件可调用 less）
+        local path=$(get_selected_path)
+        if [ -d "$path" ]; then
+            current_dir="$path"
+            load_dir
+        elif [ -f "$path" ]; then
+            # 简单预览交互：可调用 less 查看，但需退出 less 后恢复 UI
+            restore_term
+            less "$path"
+            init_term
+        fi
+        ;;
+    q) # 退出
+        restore_term
+        ;;
+    esac
+}
+
+# ========== 主循环 ==========
+main() {
+    init_term
+    load_dir
+
+    while true; do
+        draw_ui
+        handle_input
+    done
+}
+
+main

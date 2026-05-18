@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+if [[ -z "$1" ]]; then
+    echo "用法: $(basename "$0") <图片目录路径>"
+    exit 1
+fi
+
+DIR="$1"
+
+
+# shellcheck disable=SC2016
+fd '(jpg|png|jpeg|gif)' "$DIR" | fzf --ansi \
+--preview-window right:65% \
+--style full \
+--prompt " : " \
+--height 100% \
+--color bw \
+--layout reverse \
+--cycle \
+--preview '
+            preview_file={}
+            chafa --align mid,mid --optimize=3 --animate=false -s "$FZF_PREVIEW_COLUMNS"x"$FZF_PREVIEW_LINES" "$preview_file"
+'

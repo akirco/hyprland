@@ -1,0 +1,17 @@
+{
+  "binaries": ["jiq"],
+  "binary_aliases": {},
+  "cdylibs": [],
+  "cstaticlibs": [],
+  "install_layout": "cargo-home",
+  "install_prefix": "/home/neil/.local/devenv/rust/cargo",
+  "modify_path": true,
+  "provider": { "source": "cargo-dist", "version": "0.30.2" },
+  "source": {
+    "app_name": "jiq",
+    "name": "jiq",
+    "owner": "bellicose100xp",
+    "release_type": "github"
+  },
+  "version": "2.20.2"
+}

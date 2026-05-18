@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+FILE="$1"
+
+magick "$FILE" -colorspace Gray -brightness-contrast -5x5 -evaluate Gaussian-noise 0.3 "$HOME/Pictures/gray/$(basename "$FILE")"

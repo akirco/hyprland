@@ -1,0 +1,51 @@
+{
+  "alarms": [],
+  "presets": [
+    {
+      "name": "Brush teeth",
+      "duration": 240,
+      "alarm_duration": 1000,
+      "alarm_repeat": 0
+    },
+    {
+      "name": "拉屎",
+      "duration": 600,
+      "alarm_duration": 120,
+      "alarm_repeat": 3
+    }
+  ],
+  "history": [
+    {
+      "lap": 1,
+      "time_millis": 2995
+    },
+    {
+      "lap": 2,
+      "time_millis": 881
+    },
+    {
+      "lap": 3,
+      "time_millis": 1863
+    },
+    {
+      "lap": 4,
+      "time_millis": 3425
+    },
+    {
+      "lap": 5,
+      "time_millis": 1109
+    },
+    {
+      "lap": 6,
+      "time_millis": 2222
+    },
+    {
+      "lap": 7,
+      "time_millis": 907
+    },
+    {
+      "lap": 8,
+      "time_millis": 618
+    }
+  ]
+}

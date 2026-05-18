@@ -1,0 +1,48 @@
+[core]
+background_color = "#0E1011"
+layout_split_ratio = 60
+
+[left_panel]
+year_color = "white"
+month_color = "cyan"
+day_info_color = "gray"
+percent_color = "green"
+quote = "☃ Time flies."
+quote_color = "gray"
+
+[divider]
+visible = true
+char = "┋"
+color = "dark_gray"
+margin_top_percent = 15
+margin_bottom_percent = 25
+
+[year_grid]
+past_char = "● "
+past_color = "#404040"
+present_char = "⭐"
+present_color = "cyan"
+future_char = "○ "
+future_color = "#202020"
+
+[cards]
+border_color = "dark_gray"
+month_border_type = "top+bottom+left+right"
+week_border_type = "top+bottom+left+right"
+day_border_type = "top+bottom+left+right"
+title_color = "white"
+month_title = "Month"
+month_past_char = "▪ "
+month_past_color = "#505050"
+month_future_char = "▫ "
+month_future_color = "#202020"
+week_title = "Week"
+week_past_char = "◼ "
+week_past_color = "yellow"
+week_future_char = "◻ "
+week_future_color = "#202020"
+day_title = "Today"
+day_filled_char = "-"
+day_filled_color = "red"
+day_empty_char = "-"
+day_empty_color = "dark_gray"

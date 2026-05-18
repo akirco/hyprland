@@ -24,6 +24,9 @@ image_default = [
 ]
 
 video_default = [
+  { command = "mplayer", args = [
+    "--",
+  ], fork = true, silent = true },
   { command = "mpv", args = [
     "--",
   ], fork = true, silent = true },

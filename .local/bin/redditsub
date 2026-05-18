@@ -1,0 +1,342 @@
+#!/usr/bin/env python3
+import signal
+import sys
+from urllib import request, error
+import json
+import sqlite3
+import time
+import logging
+import os
+import random
+import subprocess
+from datetime import datetime, timezone
+from typing import Union, List, Dict, Any, Optional
+
+DEFAULT_LIMIT = 20
+DEFAULT_CHECK_INTERVAL = 10800
+DEFAULT_MAX_HISTORY = 1000
+MIN_DELAY = 30
+MAX_DELAY = 60
+ERROR_RETRY_DELAY = 60
+CLEANUP_INTERVAL = 10
+
+
+def adapt_datetime(dt: datetime) -> str:
+    return dt.isoformat()
+
+
+sqlite3.register_adapter(datetime, adapt_datetime)
+
+
+def reddit(subreddit: str, limit: int = 20, sort: str = "hot") -> Union[List[Dict[str, Any]], Dict[str, str]]:
+    if limit < 20:
+        limit = 20
+    elif limit > 100:
+        limit = 100
+
+    subreddit = subreddit.strip()
+    if subreddit.startswith("r/"):
+        subreddit = subreddit[2:]
+    elif subreddit.startswith("/r/"):
+        subreddit = subreddit[3:]
+
+    url = f"https://www.reddit.com/r/{subreddit}/{sort}.json?limit={limit}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    try:
+        req = request.Request(url, headers=headers)
+        response = request.urlopen(req, timeout=10)
+        data = json.loads(response.read().decode("utf-8"))
+
+        if "data" in data and "children" in data["data"]:
+            posts = []
+            for child in data["data"]["children"]:
+                post_data = child.get("data", {})
+                content = post_data.get("selftext", "")
+                if not content:
+                    content = post_data.get("url", "")
+
+                posts.append(
+                    {
+                        "id": post_data.get("id", ""),
+                        "title": post_data.get("title", "No Title"),
+                        "url": f"https://www.reddit.com{post_data.get('permalink')}",
+                        "content": content,
+                        "thumbnail": post_data.get("thumbnail"),
+                        "score": post_data.get("score", 0),
+                        "num_comments": post_data.get("num_comments", 0),
+                        "author": post_data.get("author", "unknown"),
+                        "link_flair_text": post_data.get("link_flair_text", ""),
+                        "created_utc": datetime.fromtimestamp(
+                            post_data.get("created_utc", 0), tz=timezone.utc
+                        ).isoformat(),
+                        "source": f"r/{subreddit}",
+                    }
+                )
+            return posts
+
+        return []
+
+    except error.HTTPError as e:
+        if e.code == 404:
+            return {"error": f"Subreddit 'r/{subreddit}' not found."}
+        elif e.code == 429:
+            return {"error": "Rate limit exceeded for Reddit API."}
+        return {"error": f"HTTP Error: {e.code}"}
+    except Exception as e:
+        return {"error": f"Failed to fetch reddit posts: {str(e)}"}
+
+CONFIG_DIR = os.path.expanduser("~/.config/redditsub")
+os.makedirs(CONFIG_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(f"{CONFIG_DIR}/monitor.log"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
+
+
+DEFAULT_CONFIG = {
+    "settings": {
+        "check_interval_seconds": 10800,
+        "max_history_records": 1000,
+        "enable_translation": False,
+        "translation_target_lang": "zh-CN"
+    },
+    "telegram": {
+        "bot_token": "",
+        "chat_id": ""
+    },
+    "subscriptions": [
+        {
+            "subreddit": "ArtificialInteligence",
+            "keywords": [],
+            "link_flair_filter": [],
+            "category": "new"
+        }
+    ]
+}
+
+
+class RedditMonitor:
+    def __init__(self, config_path=f"{CONFIG_DIR}/config.json"):
+        self.config = self.load_config(config_path)
+        self.db_conn = self.init_db()
+        self._running = True
+        self._cleanup_counter = 0
+
+    def shutdown(self) -> None:
+        logger.info("正在关闭...")
+        self._running = False
+        if self.db_conn:
+            self.db_conn.close()
+            logger.info("数据库连接已关闭")
+        sys.exit(0)
+
+    def load_config(self, path: str) -> Dict[str, Any]:
+        if not os.path.exists(path):
+            logger.info(f"配置文件 {path} 不存在，正在创建默认配置...")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(DEFAULT_CONFIG, f, indent=4, ensure_ascii=False)
+            logger.info("请编辑配置文件后重新启动")
+            sys.exit(0)
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def init_db(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(f"{CONFIG_DIR}/history.db", check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS processed_posts (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                subreddit TEXT,
+                created_at TIMESTAMP
+            )
+        """)
+        conn.commit()
+        return conn
+
+    def is_post_processed(self, post_id: str) -> bool:
+        cursor = self.db_conn.cursor()
+        cursor.execute("SELECT 1 FROM processed_posts WHERE id = ?", (post_id,))
+        return cursor.fetchone() is not None
+
+    def save_post(self, post_id: str, title: str, subreddit: str) -> None:
+        cursor = self.db_conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO processed_posts (id, title, subreddit, created_at) VALUES (?, ?, ?, ?)",
+                (post_id, title, subreddit, datetime.now()),
+            )
+            self.db_conn.commit()
+        except sqlite3.IntegrityError:
+            pass
+
+    def clean_old_history(self) -> None:
+        limit = self.config["settings"].get("max_history_records", DEFAULT_MAX_HISTORY)
+        cursor = self.db_conn.cursor()
+        cursor.execute(
+            f"DELETE FROM processed_posts WHERE id NOT IN (SELECT id FROM processed_posts ORDER BY created_at DESC LIMIT {limit})"
+        )
+        self.db_conn.commit()
+
+    def send_telegram(self, message: str) -> None:
+        try:
+            token = self.config["telegram"]["bot_token"]
+            chat_id = self.config["telegram"]["chat_id"]
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            payload = json.dumps({
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": False,
+            }).encode("utf-8")
+            req = request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            request.urlopen(req, timeout=10)
+            logger.info("Telegram 通知发送成功")
+        except Exception as e:
+            logger.error(f"Telegram 发送失败: {e}")
+
+    def translate_text(self, text: str, target_lang: str = "zh-CN") -> str:
+        if not text or not text.strip():
+            return ""
+        try:
+            result = subprocess.run(
+                ["trans", "-b", f":{target_lang}", text],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return result.stdout.strip()
+        except Exception as e:
+            logger.warning(f"翻译失败: {e}")
+            return text
+
+    def check_keywords(self, text: str, keywords: Optional[List[str]]) -> bool:
+        if not keywords:
+            return True
+        text_lower = text.lower()
+        return any(kw.lower() in text_lower for kw in keywords)
+
+    def check_flair(self, flair_text: str, filter_list: Optional[List[str]]) -> bool:
+        if not filter_list:
+            return True
+        if not flair_text:
+            return False
+        return flair_text in filter_list
+
+    def process_submissions(self, subreddit_name: str, keywords: Optional[List[str]], category: str = "new", link_flair_filter: Optional[List[str]] = None) -> None:
+        logger.info(f"正在检查 r/{subreddit_name} ({category})...")
+        try:
+            posts = reddit(subreddit_name, limit=20, sort=category)
+
+            if isinstance(posts, dict) and "error" in posts:
+                logger.error(f"获取帖子失败: {posts['error']}")
+                return
+
+            if not isinstance(posts, list):
+                return
+
+            posts_list: List[Dict[str, Any]] = posts
+            logger.info(f"获取到 {len(posts_list)} 条帖子")
+
+            for post in posts_list:
+                post_id = post.get("id")
+                if not post_id:
+                    continue
+
+                if self.is_post_processed(post_id):
+                    logger.info(f"跳过已处理: {post_id}")
+                    continue
+
+                if not self.check_keywords(post.get("title", ""), keywords):
+                    logger.info(f"关键词不匹配: {post.get('title')[:30]}") # type: ignore
+                    continue
+
+                if not self.check_flair(post.get("link_flair_text", ""), link_flair_filter):
+                    logger.info(f"flair不匹配: {post.get('link_flair_text')}")
+                    continue
+
+                enable_trans = self.config["settings"].get("enable_translation", False)
+                if enable_trans:
+                    target_lang = self.config["settings"].get("translation_target_lang", "zh-CN")
+                    title_to_show = self.translate_text(post["title"], target_lang)
+                else:
+                    title_to_show = post["title"]
+
+                logger.info(f"发现新匹配: {title_to_show}")
+
+                msg = (
+                    f"🔔 *Reddit Monitor*\n"
+                    f"📌 *{post['source']}*\n"
+                    f"📝 {title_to_show}\n"
+                    f"🕐 {post.get('created_utc', '')}\n"
+                    f"🏷️ {post.get('link_flair_text', 'N/A')}\n"
+                    f"👤 Author: u/{post.get('author', 'unknown')}\n"
+                    f"🔗 [Link]({post['url']})"
+                )
+
+                self.send_telegram(msg)
+
+                self.save_post(post_id, post["title"], subreddit_name)
+                logger.info(f"已保存: {post_id}")
+
+        except Exception as e:
+            logger.error(f"处理 r/{subreddit_name} 时出错: {e}")
+
+    def run(self) -> None:
+        logger.info("Reddit Monitor 服务已启动...")
+
+        def handle_signal(signum, frame):
+            self.shutdown()
+
+        signal.signal(signal.SIGINT, handle_signal)
+        signal.signal(signal.SIGTERM, handle_signal)
+
+        interval = self.config["settings"].get("check_interval_seconds", DEFAULT_CHECK_INTERVAL)
+
+        while self._running:
+            try:
+                for sub in self.config["subscriptions"]:
+                    self.process_submissions(
+                        sub["subreddit"],
+                        sub.get("keywords", []),
+                        sub.get("category", "new"),
+                        sub.get("link_flair_filter", []),
+                    )
+                    delay = random.randint(MIN_DELAY, MAX_DELAY)
+                    logger.info(f"处理完 r/{sub['subreddit']}，随机延迟 {delay} 秒...")
+                    try:
+                        width = os.get_terminal_size().columns or 40
+                    except OSError:
+                        width = 40
+                    logger.info("-" * (width - 34))
+                    time.sleep(delay)
+
+                self._cleanup_counter += 1
+                if self._cleanup_counter >= CLEANUP_INTERVAL:
+                    self.clean_old_history()
+                    self._cleanup_counter = 0
+                logger.info(f"本轮检查完成，等待 {interval} 秒...")
+                time.sleep(interval)
+
+            except KeyboardInterrupt:
+                self.shutdown()
+            except Exception as e:
+                logger.error(f"主循环发生严重错误: {e}")
+                time.sleep(ERROR_RETRY_DELAY)
+
+
+if __name__ == "__main__":
+    monitor = RedditMonitor()
+    monitor.run()

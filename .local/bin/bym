@@ -1,0 +1,526 @@
+#!/usr/bin/env bash
+
+# ==========================================
+# bash tui音乐播放器
+# 依赖: yt-dlp,mpv,socat
+# 搜索引擎：哔哩哔哩，youtube
+# ==========================================
+
+# 依赖检查
+for cmd in yt-dlp mpv socat; do
+	if ! command -v $cmd &>/dev/null; then
+		echo "错误: 未找到命令 '$cmd'，请先安装。"
+		exit 1
+	fi
+done
+
+# --------------------------
+# 1. 环境初始化与清理
+# --------------------------
+MPV_FIFO="/tmp/mpv_fifo_$$"
+MPV_SOCKET="/tmp/mpv_music_$$.sock"
+MPV_PID=""
+
+cleanup() {
+	tput cnorm
+	tput smam
+	echo -e "\e[?1049l"
+	printf '\e[?1000h'
+
+	exec 3>&- 2>/dev/null
+	rm -f "$MPV_FIFO"
+	rm -f "$MPV_SOCKET"
+	if [[ -n "$MPV_PID" ]]; then
+		kill "$MPV_PID" 2>/dev/null
+	fi
+	exit 0
+}
+
+trap cleanup EXIT INT TERM
+
+trap 'resize_flag=1' WINCH
+
+init_term() {
+	echo -e "\e[?1049h" # 进入备用屏幕缓冲区
+	printf '\e[?1000l'  # 禁用鼠标滚动
+	tput civis          # 隐藏光标
+	tput rmam           # 禁用自动换行
+	clear               # 清屏
+
+	# 建立持久化 FIFO 管道
+	rm -f "$MPV_FIFO"
+	mkfifo "$MPV_FIFO" 2>/dev/null
+	exec 3<>"$MPV_FIFO" # 给 FIFO 绑定文件描述符 3，防止被意外关闭
+}
+
+# --------------------------
+# 2. 全局状态变量
+# --------------------------
+PROGRAM_NAME="bym"
+MODE="NORMAL"
+QUERY=""
+SELECTED=0
+STATUS="♪ Ready to play music"
+RESULTS_ID=()
+RESULTS_TITLE=()
+resize_flag=0
+LOCAL_DIR="${HOME}/Music" # 可配置的本地音乐目录
+LOCAL_IDS=()              # 存储本地文件路径
+LOCAL_TITLES=()           # 存储本地文件名
+SCROLL_OFFSET=0           # 当前列表显示的起始索引
+SEARCH_SOURCE="youtube"   # 可选 "youtube" 或 "bilibili"
+BILI_COOKIE="${XDG_CONFIG_HOME}/${PROGRAM_NAME}/cookies.txt"
+# --------------------------
+# UI 绘制函数
+# --------------------------
+# --------------------------
+# 工具函数
+# --------------------------
+generate_rainbow() {
+	local n=${1:-48}
+	local colors=()
+	for ((i = 0; i < n; i++)); do
+		local hue=$((i * 360 / n))
+		local r g b
+		if ((hue < 60)); then
+			r=255
+			g=$((hue * 255 / 60))
+			b=0
+		elif ((hue < 120)); then
+			r=$((255 - (hue - 60) * 255 / 60))
+			g=255
+			b=0
+		elif ((hue < 180)); then
+			r=0
+			g=255
+			b=$(((hue - 120) * 255 / 60))
+		elif ((hue < 240)); then
+			r=0
+			g=$((255 - (hue - 180) * 255 / 60))
+			b=255
+		elif ((hue < 300)); then
+			r=$(((hue - 240) * 255 / 60))
+			g=0
+			b=255
+		else
+			r=255
+			g=0
+			b=$((255 - (hue - 300) * 255 / 60))
+		fi
+		local idx=$((16 + (r / 51) * 36 + (g / 51) * 6 + (b / 51)))
+		colors+=("$idx")
+	done
+	echo "${colors[@]}"
+}
+declare -a rainbow_codes
+# shellcheck disable=SC2207
+rainbow_codes=($(generate_rainbow 72))
+TICKS=0
+
+draw_ui() {
+	((TICKS++))
+	local color_idx=$(((TICKS / 1) % ${#rainbow_codes[@]}))
+	local color_code="${rainbow_codes[$color_idx]}"
+	local curr_color="\e[38;5;${color_code}m"
+
+	local line term_cols term_rows spaces
+	term_cols=$(tput cols)
+	term_rows=$(tput lines)
+	spaces=$(printf '%*s' "$term_cols" "")
+	line=$(printf ' %.0s─' $(seq 1 "$term_cols"))
+
+	# 强制回到顶部重绘
+	echo -ne "\e[H"
+
+	# --- Header  ---
+	local title="♪ Music Player ♪"
+	local padding=$(((term_cols - ${#title}) / 2))
+	printf "\e[32m%${padding}s%s\e[0m\e[K\n" "" "$title"
+	echo -e "\e[K"
+
+	# --- Search Box ---
+	# local line=$(printf ' %.0s─' $(seq 1 $term_cols))
+	local cursor=""
+	[[ "$MODE" == "SEARCH" ]] && cursor="█"
+
+	# 总宽度 - 图标和文字占用的固定长度(12) - 搜索词长度 - 光标长度(1)
+	local query_display="${QUERY}${cursor}"
+	local search_padding=$((term_cols - 12 - ${#QUERY} - ${#cursor}))
+	# 确保 padding 不为负数
+	[[ $search_padding -lt 0 ]] && search_padding=0
+
+	echo -e "\e[32m${line}\e[0m\e[K"
+	printf "       %s${spaces:0:$search_padding}\e[K\n" "$query_display"
+	echo -e "\e[32m${line}\e[0m\e[K"
+
+	# --- Result List ---
+	# 计算可用高度：总行数 - 顶部6行 - 底部4行
+	local list_height=$((term_rows - 10))
+	if [[ $SELECTED -lt $SCROLL_OFFSET ]]; then
+		SCROLL_OFFSET=$SELECTED
+	elif [[ $SELECTED -ge $((SCROLL_OFFSET + list_height)) ]]; then
+		SCROLL_OFFSET=$((SELECTED - list_height + 1))
+	fi
+	[[ $SCROLL_OFFSET -lt 0 ]] && SCROLL_OFFSET=0
+	[[ $SCROLL_OFFSET -gt $((${#RESULTS_TITLE[@]} - list_height)) ]] && SCROLL_OFFSET=$((${#RESULTS_TITLE[@]} - list_height))
+	[[ $SCROLL_OFFSET -lt 0 ]] && SCROLL_OFFSET=0 # 当列表不足一行时的安全保护
+	# 绘制列表（从 SCROLL_OFFSET 开始显示）
+	for ((i = 0; i < list_height; i++)); do
+		idx=$((SCROLL_OFFSET + i))
+		if [[ $idx -lt ${#RESULTS_TITLE[@]} ]]; then
+			local title="${RESULTS_TITLE[$idx]}"
+			# 标题长度处理
+			[[ ${#title} -gt $((term_cols - 10)) ]] && title="${title:0:$((term_cols - 13))}..."
+
+			if [[ $idx -eq $SELECTED ]]; then
+				printf " ▶ \e[42;30m   %s${spaces:0:$((term_cols - 6 - ${#title}))}\e[0m\e[K\n" "$title"
+			else
+				printf "      %s${spaces:0:$((term_cols - 6 - ${#title}))}\e[K\n" "$title"
+			fi
+		else
+			echo -e "\e[K"
+		fi
+	done
+
+	# --- Status Bar & Help ---
+
+	local progress=0
+	[[ -n "$MPV_PID" ]] && progress=$(get_progress)
+
+	tput cup $((term_rows - 5)) 0
+
+	local progress=0
+	[[ -n "$MPV_PID" ]] && progress=$(get_progress)
+
+	local pos_time="00:00"
+	local total_time="00:00"
+	if [[ -n "$MPV_PID" ]]; then
+		local time_str
+		time_str=$(get_time_info)
+		pos_time="${time_str%% *}"
+		total_time="${time_str#* }"
+	fi
+
+	local bar_width=$((term_cols - 20))
+	[[ $bar_width -lt 10 ]] && bar_width=10 # 最小宽度保护
+	local filled_len=$((bar_width * progress / 100))
+	local empty_len=$((bar_width - filled_len))
+
+	# '━' '─'
+	local fill_bar empty_bar
+	fill_bar=$(printf '%.0s━' $(seq 1 $filled_len 2>/dev/null))
+	empty_bar=$(printf '%.0s─' $(seq 1 $empty_len 2>/dev/null))
+
+	printf "   %s \e[32m%s\e[90m%s\e[0m %s  \e[K\n" "$pos_time" "$fill_bar" "$empty_bar" "$total_time"
+
+	echo -e "${curr_color}${line}\e[0m\e[K"
+
+	# 状态栏呼吸效果
+	local status_icon="  "
+	[[ "$STATUS" == *"Paused"* ]] && status_icon="  "
+	printf " ${curr_color}%s\e[0m %s\e[K\n" "$status_icon" "$STATUS"
+	echo -e "${curr_color}${line}\e[0m\e[K"
+
+	# ----------------------------------- 帮助信息 ----------------------------------- #
+	content="[enter]Play | [space]Pause | [r]Reload [s]Switch(${SEARCH_SOURCE}) |  [/]Search | [q]Quit"
+	content_len=$(echo -n "$content" | wc -L)
+	padding=$((term_cols - content_len - 1))
+	printf "\r%${padding}s\e[90m%s\e[0m\e[K" "" "$content"
+}
+
+# --------------------------
+# 业务逻辑函数
+# --------------------------
+load_local_music() {
+	LOCAL_IDS=()
+	LOCAL_TITLES=()
+
+	shopt -s nocaseglob
+	local files=()
+	for ext in mp3 flac m4a wav ogg aac m4b; do
+		while IFS= read -r -d '' file; do
+			files+=("$file")
+		done < <(find "$LOCAL_DIR" -type f -iname "*.$ext" -print0 2>/dev/null)
+	done
+
+	# shellcheck disable=SC2207
+	IFS=$'\n' sorted_files=($(sort <<<"${files[*]}"))
+	unset IFS
+
+	for file in "${sorted_files[@]}"; do
+		if [[ -n "$file" && -f "$file" && -r "$file" ]]; then
+			local fname
+			fname=$(basename "$file")
+			local title="${fname%.*}"
+			LOCAL_IDS+=("$file")
+			LOCAL_TITLES+=("$title")
+		fi
+	done
+
+	if [[ ${#LOCAL_IDS[@]} -eq 0 ]]; then
+		STATUS="  No music found in $LOCAL_DIR"
+	else
+		STATUS="󰝚  Loaded ${#LOCAL_IDS[@]} local songs"
+	fi
+
+	RESULTS_ID=("${LOCAL_IDS[@]}")
+	RESULTS_TITLE=("${LOCAL_TITLES[@]}")
+	SELECTED=0
+}
+
+get_time_info() {
+	local pos=0 duration=0
+	if [[ -S "$MPV_SOCKET" ]]; then
+		# 获取当前播放位置（秒）
+		local pos_res dur_res
+		pos_res=$(echo '{ "command": ["get_property", "time-pos"] }' | socat - "$MPV_SOCKET" 2>/dev/null)
+		pos=$(echo "$pos_res" | sed -n 's/.*"data":\([0-9.]*\).*/\1/p')
+		pos=${pos%%.*} # 取整
+		# 获取总时长（秒）
+		dur_res=$(echo '{ "command": ["get_property", "duration"] }' | socat - "$MPV_SOCKET" 2>/dev/null)
+		duration=$(echo "$dur_res" | sed -n 's/.*"data":\([0-9.]*\).*/\1/p')
+		duration=${duration%%.*}
+	fi
+	# 格式化为 mm:ss
+	local pos_min=$((pos / 60))
+	local pos_sec=$((pos % 60))
+	local dur_min=$((duration / 60))
+	local dur_sec=$((duration % 60))
+	printf -v pos_str "%02d:%02d" "$pos_min" "$pos_sec"
+	printf -v dur_str "%02d:%02d" "$dur_min" "$dur_sec"
+	echo "$pos_str $dur_str"
+}
+
+toggle_source() {
+	if [[ "$SEARCH_SOURCE" == "youtube" ]]; then
+		SEARCH_SOURCE="bilibili"
+	else
+		SEARCH_SOURCE="youtube"
+	fi
+	load_local_music
+	if [[ ${#LOCAL_IDS[@]} -eq 0 ]]; then
+		STATUS="${SEARCH_SOURCE^}  |  No music found in $LOCAL_DIR"
+	else
+		STATUS="${SEARCH_SOURCE^}  |  Ready to play music"
+	fi
+	SELECTED=0
+	SCROLL_OFFSET=0
+	draw_ui
+}
+
+do_yts_search() {
+	local search_query="$1"
+	local limit="${2:-35}"
+
+	local encoded_query
+	encoded_query=$(printf '%s' "$search_query" | jq -sRr @uri)
+
+	local url="https://www.youtube.com/results?search_query=${encoded_query}&sp=EgIQAQ%253D%253D&hl=en&gl=US"
+
+	local html_content
+	if ! html_content=$(curl -s "$url" 2>/dev/null); then
+		return 1
+	fi
+
+	local json_data
+	json_data=$(echo "$html_content" | grep -oP 'var ytInitialData = \K.*?(?=;</script>)')
+
+	if [[ -z "$json_data" ]]; then
+		return 1
+	fi
+
+	echo "$json_data" | jq -r "
+      [
+        .. | objects |
+        select(has(\"videoRenderer\")) |
+        .videoRenderer | {
+          title: .title.runs[0].text,
+          videoId: .videoId
+        }
+      ] | .[:${limit}]
+      "
+}
+
+do_search() {
+	if [[ -z "$QUERY" ]]; then return; fi
+
+	STATUS=" Searching $SEARCH_SOURCE for: $QUERY ..."
+	draw_ui
+
+	local json_results
+	if [[ "$SEARCH_SOURCE" == "youtube" ]]; then
+		json_results=$(do_yts_search "$QUERY" 35 2>/dev/null)
+	else
+		local raw_results
+		search_prefix="bilisearch15:$QUERY"
+		raw_results=$(yt-dlp --cookies "$BILI_COOKIE" "$search_prefix" \
+			--print "%(id)s|~|%(title)s [%(duration_string)s] (%(uploader)s)" \
+			--no-warnings 2>/dev/null)
+	fi
+
+	RESULTS_ID=()
+	RESULTS_TITLE=()
+
+	if [[ "$SEARCH_SOURCE" == "youtube" ]]; then
+		while IFS= read -r line; do
+			local vid title
+			vid=$(echo "$line" | jq -r '.videoId' 2>/dev/null)
+			title=$(echo "$line" | jq -r '.title' 2>/dev/null)
+			if [[ "$vid" != "null" && -n "$vid" && "$title" != "null" && -n "$title" ]]; then
+				RESULTS_ID+=("$vid")
+				RESULTS_TITLE+=("$title")
+			fi
+		done < <(echo "$json_results" | jq -c '.[]' 2>/dev/null)
+	else
+		while IFS= read -r line; do
+			[[ -z "$line" || "$line" == ERROR:* ]] && continue
+			local vid="${line%%|~|*}"
+			local title="${line#*|~|}"
+			if [[ -n "$vid" && -n "$title" ]]; then
+				RESULTS_ID+=("$vid")
+				RESULTS_TITLE+=("$title")
+			fi
+		done <<<"$raw_results"
+	fi
+
+	SELECTED=0
+	if [[ ${#RESULTS_ID[@]} -eq 0 ]]; then
+		STATUS=" No results found. (Check network)"
+	else
+		STATUS="♪ Ready to play music"
+	fi
+}
+
+init_mpv() {
+	if [[ -n "$MPV_PID" ]]; then
+		kill "$MPV_PID" 2>/dev/null
+		rm -f "$MPV_SOCKET"
+		sleep 0.2
+	fi
+
+	mpv --no-video --input-ipc-server="$MPV_SOCKET" \
+		--idle=yes >/dev/null 2>&1 &
+	MPV_PID=$!
+}
+
+do_play() {
+	if [[ ${#RESULTS_ID[@]} -eq 0 ]]; then return; fi
+	local id="${RESULTS_ID[$SELECTED]}"
+	local title="${RESULTS_TITLE[$SELECTED]}"
+
+	if [[ -f "$id" && -r "$id" ]]; then
+		echo '{ "command": ["loadfile", "'"$id"'", "replace"] }' | socat - "$MPV_SOCKET" >/dev/null 2>&1
+		STATUS="  Playing: $title (local)"
+	else
+		local video_url
+		if [[ "$SEARCH_SOURCE" == "youtube" ]]; then
+			video_url="https://www.youtube.com/watch?v=$id"
+		else
+			video_url="https://www.bilibili.com/video/$id"
+		fi
+		echo '{ "command": ["loadfile", "'"$video_url"'", "replace"] }' | socat - "$MPV_SOCKET" >/dev/null 2>&1
+		STATUS="  Playing: $title"
+	fi
+
+	draw_ui
+}
+
+get_progress() {
+	[[ ! -S "$MPV_SOCKET" ]] && echo "0" && return
+
+	local res percent
+	res=$(echo '{ "command": ["get_property", "percent-pos"] }' | socat - "$MPV_SOCKET" 2>/dev/null)
+
+	percent=$(echo "$res" | sed -n 's/.*"data":\([0-9.]*\).*/\1/p' | cut -d. -f1)
+
+	[[ -z "$percent" ]] && echo "0" || echo "$percent"
+}
+
+# --------------------------
+# 键盘事件监听循环
+# --------------------------
+init_mpv
+init_term
+load_local_music
+
+while true; do
+	if [[ "$resize_flag" == "1" ]]; then
+		clear # 窗口大小改变时全屏刷新
+		resize_flag=0
+	fi
+	draw_ui
+
+	if IFS= read -rsn1 -t 1 key; then
+		if [[ "$key" == $'\e' ]]; then
+				if IFS= read -rsn1 -t 0 2>/dev/null; then
+						IFS= read -rsn1 k1
+				if [[ "$k1" == "[" ]]; then
+					read -rsn1 k2
+					case "$k2" in
+					A) key="UP" ;;
+					B) key="DOWN" ;;
+					esac
+				fi
+			else
+				key="ESC"
+			fi
+		fi
+		# --- 模式处理 ---
+		if [[ "$MODE" == "SEARCH" ]]; then
+			if [[ "$key" == "ESC" ]]; then
+				MODE="NORMAL"
+				RESULTS_ID=("${LOCAL_IDS[@]}")
+				RESULTS_TITLE=("${LOCAL_TITLES[@]}")
+				SELECTED=0
+			elif [[ "$key" == $'\x7f' || "$key" == $'\b' || "$key" == $'\x08' ]]; then
+				QUERY="${QUERY%?}"
+			elif [[ "$key" == $'\n' || "$key" == $'\r' || "$key" == "" ]]; then
+				MODE="NORMAL"
+				do_search
+			else
+				if [[ ${#key} -eq 1 ]]; then
+					QUERY+="$key"
+				fi
+			fi
+
+		elif [[ "$MODE" == "NORMAL" ]]; then
+			case "$key" in
+			"UP" | k)
+				[[ $SELECTED -gt 0 ]] && ((SELECTED--))
+				;;
+			"DOWN" | j)
+				[[ $SELECTED -lt $((${#RESULTS_TITLE[@]} - 1)) ]] && ((SELECTED++))
+				;;
+			"ESC" | q | Q)
+				if [[ "$key" != "ESC" ]]; then cleanup; fi
+				;;
+			"s")
+				toggle_source
+				;;
+			/)
+				MODE="SEARCH"
+				;;
+			$'\n' | $'\r' | "")
+				do_play
+				;;
+			"r")
+				load_local_music
+				draw_ui
+				;;
+			" ")
+				if [[ -n "$MPV_PID" ]]; then
+					# 通过 socket 发送暂停/继续命令
+					echo '{ "command": ["cycle", "pause"] }' | socat - "$MPV_SOCKET" >/dev/null 2>&1
+					if [[ "$STATUS" == *"Playing"* ]]; then
+						STATUS="${STATUS/  Playing/ Paused}"
+					else
+						STATUS="${STATUS/ Paused/  Playing}"
+					fi
+				fi
+				;;
+			esac
+		fi
+	else
+		continue
+	fi
+done

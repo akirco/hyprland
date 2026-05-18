@@ -1,0 +1,14 @@
+#!/bin/bash
+tput civis
+
+trap "tput cnorm; clear; exit" SIGINT SIGTERM
+
+while true; do
+    lines=$(tput lines)
+
+    tput cup $((lines-1)) 0
+    echo -n "--- 底部状态栏: $(date +%H:%M:%S) ---"
+
+    sleep 1
+done
+

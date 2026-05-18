@@ -1,0 +1,27 @@
+set nocompatible
+filetype plugin indent on
+syntax on
+set encoding=utf-8
+
+set showmatch
+set cursorline
+set wildmenu
+set laststatus=2
+set ruler
+set showcmd
+
+set autoindent
+set smartindent
+set expandtab
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+set number relativenumber
+set hlsearch
+set incsearch
+set ignorecase
+set smartcase
+set linebreak
+highlight StatusLine ctermfg=black ctermbg=blue
+highlight StatusLineNC ctermfg=gray ctermbg=white
+

@@ -1,5 +1,7 @@
 /* ------------------------------ common styles ----------------------------- */
 
+@define-color waybar-bg rgba(14, 16, 17, 0.9);
+
 * {
   border: none;
   border-radius: 0;
@@ -15,7 +17,7 @@ window#waybar {
 }
 
 tooltip {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   color: #b4befe;
   border-radius: 12px;
 }
@@ -27,7 +29,7 @@ tooltip {
 /* -------------------------------------------------------------------------- */
 #clock {
   color: #f5c359;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   border-radius: 12px;
   padding: 2px 10px 2px 10px;
   margin-top: 4px;
@@ -40,7 +42,7 @@ tooltip {
 
 #workspaces {
   margin-left: 20px;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   border-radius: 12px;
   margin-top: 4px;
   padding: 2px;
@@ -73,7 +75,7 @@ tooltip {
 
 #window {
   color: #b4befe;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   border-radius: 12px;
   margin-top: 4px;
   margin-left: 15px;
@@ -110,26 +112,26 @@ window#waybar.empty #window {
   color: #b2bab8;
   margin-top: 4px;
   border-radius: 12px;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   padding-left: 10px;
   padding-right: 20px;
   margin-right: 10px;
 }
 
 #cpu {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #f9c74f;
 }
 
 #memory {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #f9c74f;
 }
 
 #temperature {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #97cd23;
 }
@@ -139,7 +141,7 @@ window#waybar.empty #window {
 }
 
 #battery {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #19ef8f;
 }
@@ -162,37 +164,37 @@ window#waybar.empty #window {
 }
 
 #network {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #0f69de;
 }
 
 #bluetooth {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #0f69de;
 }
 
 #bluetooth.connected {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #047af8;
 }
 
 #backlight {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #f58686;
 }
 
 #pulseaudio {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #984df8;
 }
 
 #pulseaudio.microphone {
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   margin-right: 10px;
   color: #984df8;
 }
@@ -205,7 +207,7 @@ window#waybar.empty #window {
 
 #custom-recorder {
   margin-right: 10px;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   padding-left: 10px;
   padding-right: 10px;
   color: #ebdcdc;
@@ -226,22 +228,22 @@ window#waybar.empty #window {
 }
 
 #custom-vpn.running {
-  background-color: rgba(14, 16, 17, 1);
+  background-color: @waybar-bg;
   color: #26a269;
 }
 
 #custom-vpn.stopped {
-  background-color: rgba(14, 16, 17, 1);
+  background-color: @waybar-bg;
   color: #c01c28;
 }
 
 #custom-vpn.error {
-  background-color: rgba(14, 16, 17, 1);
+  background-color: @waybar-bg;
   color: #f66151;
 }
 
 #custom-vpn.critical {
-  background-color: rgba(14, 16, 17, 1);
+  background-color: @waybar-bg;
   color: #ff7800;
 }
 
@@ -250,7 +252,7 @@ window#waybar.empty #window {
 #custom-capslock {
   margin-right: 10px;
   padding: 2px 10px 2px 10px;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
 }
 
 #custom-capslock .capslock-on {
@@ -264,7 +266,7 @@ window#waybar.empty #window {
 
 #tray {
   margin-right: 4px;
-  background: rgba(14, 16, 17, 1);
+  background: @waybar-bg;
   color: #cdd6f4;
 }
 

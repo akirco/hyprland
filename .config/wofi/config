@@ -13,4 +13,4 @@ insensitive=true
 allow_images=true
 image_size=35
 gtk_dark=false
-; normal_window=true
+normal_window=true

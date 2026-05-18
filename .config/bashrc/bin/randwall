@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+awww img --resize crop -t random "$(find "$HOME/Pictures/wallpapers/" | shuf -n1)"

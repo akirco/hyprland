@@ -1,13 +1,13 @@
 {
   "layer": "top",
   "position": "top",
-  "output": "HDMI-A-1",
+  // "output": "HDMI-A-1",
   "reload_style_on_change": true,
   "mod": "dock",
   "exclusive": true,
   "passthrough": false,
   "gtk-layer-shell": true,
-  "height": 48,
+  "height": 52,
   "modules-left": [
     "clock",
     "hyprland/window"
@@ -56,19 +56,12 @@
       "3": "3",
       "4": "4",
       "5": "5",
-      "min": ""
+      "min": ""
     },
     "sort-by-number": true,
     "on-click": "activate",
     "on-scroll-up": "hyprctl dispatch workspace e+1",
     "on-scroll-down": "hyprctl dispatch workspace e-1"
-  },
-  "custom/capslock": {
-    "exec": "~/.config/waybar/scripts/capslock",
-    "format": "{}",
-    "interval": 1,
-    "tooltip": false,
-    "return-type": "json"
   },
   "hyprland/window": {
     "format": "{}",
@@ -130,12 +123,12 @@
       "󰂁",
       "󰂂",
       "󰁹"
-    ],
-    "events": {
-      "on-discharging-critical": "~/.config/waybar/scripts/battery critical 20",
-      "on-discharging-warning": "~/.config/waybar/scripts/battery warning 30",
-      "on-charging-full": "~/.config/waybar/scripts/battery full 90"
-    }
+    ]
+    // "events": {
+    //   "on-discharging-critical": "~/.config/waybar/scripts/battery critical 20",
+    //   "on-discharging-warning": "~/.config/waybar/scripts/battery warning 30",
+    //   "on-charging-full": "~/.config/waybar/scripts/battery full 90"
+    // }
   },
   "network": {
     "format-wifi": "{icon} {signalStrength}%",

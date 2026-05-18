@@ -1,0 +1,907 @@
+#!/bin/bash
+
+# ============================================
+# Package Manager Cleanup Tool v2.0
+# Features: Scan, list, and clean package-related junk files
+# ============================================
+
+# Color definitions (pacman-style)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+BOLD='\033[1m'
+DIM='\033[2m'
+
+# Global variables
+CONFIG_FILE="$HOME/.config/pkg-cleaner.conf"
+LOG_FILE="/tmp/pkg-cleaner-$(date +%Y%m%d).log"
+TEMP_DIR="/tmp/pkg-cleaner-scan-$$"
+
+# Progress UI state
+PROGRESS_ACTIVE=false
+declare -a PROGRESS_LABELS=()
+declare -a PROGRESS_VALUES=()
+declare -a PROGRESS_MAXES=()
+PROGRESS_COUNT=0
+
+# Config file defaults
+declare -A CONFIG=(
+    ["BACKUP_BEFORE_CLEAN"]="true"
+    ["KEEP_CACHE_DAYS"]="7"
+    ["AUTO_REMOVE_ORPHANS"]="false"
+    ["SHOW_DETAILED_INFO"]="true"
+    ["MAX_SCAN_DEPTH"]="3"
+    ["SKIP_DIRS"]="/home /var/lib /opt"
+    ["LOG_LEVEL"]="INFO"
+)
+
+# ============================================
+# Progress UI Functions
+# ============================================
+
+draw_progress() {
+    local offset=$1
+    local percent=$2
+    local label=$3
+    local bar_size=40
+
+    local filled=$((percent * bar_size / 100))
+    local bar
+    bar=$(printf "%${filled}s" | tr ' ' '#')
+
+    tput sc
+    tput cuu "$offset"
+    printf "\r\e[K%s [%-${bar_size}s] %d%%" "$label" "$bar" "$percent"
+    tput rc
+}
+
+setup_progress_ui() {
+    PROGRESS_ACTIVE=true
+    PROGRESS_LABELS=()
+    PROGRESS_VALUES=()
+    PROGRESS_MAXES=()
+    PROGRESS_COUNT=0
+}
+
+add_progress_bar() {
+    local label=$1
+    local max=$2
+    PROGRESS_LABELS+=("$label")
+    PROGRESS_VALUES+=("0")
+    PROGRESS_MAXES+=("$max")
+    ((PROGRESS_COUNT++))
+    echo "$label [$(printf '%*s' 40 | tr ' ' '-')] 0%"
+}
+
+set_progress_value() {
+    local index=$1
+    local value=$2
+    local offset=$((PROGRESS_COUNT - index + 1))
+    local max=${PROGRESS_MAXES[$index]}
+    [[ $max -eq 0 ]] && max=1
+    local percent=$((value * 100 / max))
+    PROGRESS_VALUES[$index]=$value
+    draw_progress "$offset" "$percent" "${PROGRESS_LABELS[$index]}"
+}
+
+teardown_progress_ui() {
+    if [[ $PROGRESS_ACTIVE == true ]]; then
+        PROGRESS_ACTIVE=false
+        echo
+    fi
+}
+
+spinner() {
+    local pid=$1
+    local delay=${2:-0.1}
+    local spinstr='|/-\'
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf "\r%c" "${spinstr}"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+    done
+    printf "\r"
+}
+
+show_spinner() {
+    local label="$1"
+    local pid=$2
+    spinner "$pid" 0.1 &
+    local spin_pid=$!
+    wait $pid 2>/dev/null || true
+    kill $spin_pid 2>/dev/null || true
+    printf "\r"
+}
+
+# ============================================
+# Output Functions (pacman-style)
+# ============================================
+
+msg() {
+    echo -e "${NC}:: ${BOLD}$*${NC}"
+}
+
+msg2() {
+    echo -e "${CYAN}:: $*${NC}"
+}
+
+msg_stage() {
+    echo -e "${BLUE}==>${NC} ${BOLD}$*${NC}"
+}
+
+msg_action() {
+    echo -e "${CYAN}==>${NC} $*"
+}
+
+msg_info() {
+    echo -e "    $*"
+}
+
+msg_warn() {
+    echo -e "${YELLOW}warning:${NC} ${*}"
+}
+
+msg_error() {
+    echo -e "${RED}error:${NC} ${*}" >&2
+}
+
+msg_success() {
+    echo -e "${GREEN}$*${NC}"
+}
+
+human_size() {
+    local kb=$1
+    [[ -z $kb || $kb -eq 0 ]] && echo "0 KB" && return
+    echo "$kb" | awk '{
+        sum = $1; split("KB MB GB TB", v); i = 1;
+        while (sum >= 1024 && i < 4) { sum /= 1024; i++; }
+        printf "%.1f %s\n", sum, v[i];
+    }'
+}
+
+# ============================================
+# Initialization
+# ============================================
+
+init() {
+    mkdir -p "$TEMP_DIR"
+    load_config
+
+    if ! command -v pacman &>/dev/null; then
+        msg_error "This tool can only run on Arch Linux or derivatives"
+        exit 1
+    fi
+
+    if [[ $EUID -ne 0 ]] && [[ "$1" != "scan" && "$1" != "list" ]]; then
+        msg_warn "Some cleanup operations require root privileges"
+    fi
+}
+
+load_config() {
+    if [[ -f "$CONFIG_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$CONFIG_FILE"
+    else
+        create_default_config
+    fi
+}
+
+create_default_config() {
+    cat >"$CONFIG_FILE" <<EOF
+# Package Cleanup Tool Config File
+BACKUP_BEFORE_CLEAN="true"
+KEEP_CACHE_DAYS="7"
+AUTO_REMOVE_ORPHANS="false"
+SHOW_DETAILED_INFO="true"
+MAX_SCAN_DEPTH="3"
+SKIP_DIRS="/home /var/lib /opt"
+LOG_LEVEL="INFO"
+EOF
+    msg "Default config file created at $CONFIG_FILE"
+}
+
+log() {
+    local level=$1
+    local message=$2
+    echo "[$level] $message" >>"$LOG_FILE"
+}
+
+# ============================================
+# Scan Functions
+# ============================================
+
+scan_orphan_files() {
+    local depth=${1:-3}
+    log "INFO" "Starting orphan file scan..."
+    msg_stage "Scanning orphan files from uninstalled packages"
+
+    msg2 "Generating installed package file list..."
+    pacman -Qlq | sort -u >"$TEMP_DIR/installed_files.txt"
+    local installed_count
+    installed_count=$(wc -l <"$TEMP_DIR/installed_files.txt")
+    msg_info "Found $installed_count installed files"
+
+    msg2 "Scanning system files..."
+    setup_progress_ui
+    add_progress_bar "scanning" 100
+
+    echo
+    echo "------------------------------------------"
+
+    local total_files=0
+    local scanned=0
+    local term_cols
+    term_cols=$(tput cols 2>/dev/null || echo 80)
+
+    find / -maxdepth "$depth" -type f 2>/dev/null | \
+        grep -vE "^/(dev|proc|sys|run|tmp)" | \
+        grep -vE "$(echo "${CONFIG[SKIP_DIRS]}" | tr ' ' '|')" | \
+        while IFS= read -r file; do
+            ((total_files++))
+            echo "$file"
+        done | sort -u >"$TEMP_DIR/all_files.txt" &
+
+    local pid=$!
+    local bar_size=40
+
+    while kill -0 "$pid" 2>/dev/null; do
+        local current_size
+        current_size=$(wc -l <"$TEMP_DIR/all_files.txt" 2>/dev/null || echo 0)
+        local percent=50
+        local filled=$((percent * bar_size / 100))
+        local bar
+        bar=$(printf "%${filled}s" | tr ' ' '#')
+
+        tput sc
+        tput cuu 2
+        printf "\r\e[Kscanning [%-${bar_size}s] %d files processed" "$bar" "$current_size"
+        tput rc
+
+        sleep 0.2
+    done
+
+    wait $pid
+
+    local final_count
+    final_count=$(wc -l <"$TEMP_DIR/all_files.txt" 2>/dev/null || echo 0)
+    local filled=$((100 * bar_size / 100))
+    local bar
+    bar=$(printf "%${filled}s" | tr ' ' '#')
+    tput sc
+    tput cuu 2
+    printf "\r\e[Kscanning [%-${bar_size}s] 100%% %d files${NC}" "$bar" "$final_count"
+    tput rc
+    echo
+
+    teardown_progress_ui
+
+    msg2 "Comparing files..."
+    comm -13 "$TEMP_DIR/installed_files.txt" "$TEMP_DIR/all_files.txt" >"$TEMP_DIR/orphan_files.txt"
+
+    local count
+    count=$(wc -l <"$TEMP_DIR/orphan_files.txt")
+
+    if [[ $count -gt 0 ]]; then
+        msg_warn "Found $count possible orphan files"
+
+        msg_info "Grouped by directory:"
+        cat "$TEMP_DIR/orphan_files.txt" |
+            sed 's|/[^/]*$||' |
+            sort | uniq -c | sort -rn | head -20 |
+            while read -r num dir; do
+                msg_info "  $num files in $dir"
+            done
+
+        msg_info "Sample files:"
+        head -10 "$TEMP_DIR/orphan_files.txt" | while read -r file; do
+            if [[ -f "$file" ]]; then
+                local size
+                size=$(du -h "$file" 2>/dev/null | cut -f1)
+                msg_info "  $file (${size:-unknown})"
+            fi
+        done
+    else
+        msg_success "No orphan files found"
+    fi
+
+    echo "$count"
+}
+
+scan_cache() {
+    log "INFO" "Starting cache scan..."
+    msg_stage "Scanning package cache"
+
+    local pacman_cache="/var/cache/pacman/pkg"
+    local aur_cache=("$HOME/.cache/yay/pkg" "$HOME/.cache/paru/pkg")
+
+    if [[ -d "$pacman_cache" ]]; then
+        local pacman_size
+        local pacman_count
+        pacman_size=$(du -sh "$pacman_cache" 2>/dev/null | cut -f1)
+        pacman_count=$(find "$pacman_cache" -name "*.pkg.tar.*" -type f 2>/dev/null | wc -l)
+        msg_info "Pacman cache: $pacman_count files ($pacman_size)"
+
+        msg_info "Grouped by last modified:"
+        find "$pacman_cache" -name "*.pkg.tar.*" -type f -printf "%TY-%Tm-%Td\n" 2>/dev/null |
+            sort | uniq -c | tail -10 | while read -r count date; do
+                msg_info "  $date : $count files"
+            done
+    fi
+
+    for cache_dir in "${aur_cache[@]}"; do
+        if [[ -d "$cache_dir" ]]; then
+            local aur_size
+            local aur_count
+            aur_size=$(du -sh "$cache_dir" 2>/dev/null | cut -f1)
+            aur_count=$(find "$cache_dir" -name "*.pkg.tar.*" -type f 2>/dev/null | wc -l)
+            msg_info "AUR cache ($cache_dir): $aur_count files ($aur_size)"
+        fi
+    done
+
+    local days=${CONFIG[KEEP_CACHE_DAYS]}
+    local old_files
+    old_files=$(find "$pacman_cache" -name "*.pkg.tar.*" -type f -mtime +"$days" 2>/dev/null | wc -l)
+
+    if [[ $old_files -gt 0 ]]; then
+        msg_warn "$old_files old cache files (older than $days days)"
+    fi
+}
+
+scan_config_files() {
+    log "INFO" "Starting config file scan..."
+    msg_stage "Scanning unowned config files"
+
+    msg2 "Scanning /etc for config files..."
+    pacman -Ql | grep "^[^ ]* /etc/" | cut -d' ' -f1 | sort -u >"$TEMP_DIR/etc_packages.txt"
+
+    find /etc -type f 2>/dev/null | while read -r file; do
+        local pkg
+        pkg=$(pacman -Qo "$file" 2>/dev/null | awk '{print $5}')
+        if [[ -z "$pkg" ]]; then
+            echo "$file" >>"$TEMP_DIR/orphan_configs.txt"
+        fi
+    done
+
+    local config_count=0
+    if [[ -f "$TEMP_DIR/orphan_configs.txt" ]]; then
+        config_count=$(wc -l <"$TEMP_DIR/orphan_configs.txt")
+        if [[ $config_count -gt 0 ]]; then
+            msg_warn "Found $config_count unowned config files"
+            if [[ $config_count -lt 20 ]]; then
+                msg_info "List:"
+                cat "$TEMP_DIR/orphan_configs.txt" | while read -r f; do
+                    msg_info "  $f"
+                done
+            fi
+        else
+            msg_success "No unowned config files found"
+        fi
+    fi
+
+    echo "$config_count"
+}
+
+scan_user_files() {
+    local home_dir="${2:-$HOME}"
+    log "INFO" "Starting user directory scan..."
+    msg_stage "Scanning user directories"
+
+    local patterns=(
+        ".config/*"
+        ".cache/*"
+        ".local/share/*"
+        ".mozilla/firefox/*"
+        ".config/chromium/*"
+        ".config/google-chrome/*"
+        ".var/app/*"
+        ".gnome/*"
+        ".kde/*"
+        ".thumbnails/*"
+    )
+
+    pacman -Qe | awk '{print $1}' >"$TEMP_DIR/installed_apps.txt"
+
+    local total_size=0
+    local dir_count=0
+
+    for pattern in "${patterns[@]}"; do
+        while IFS= read -r dir; do
+            local dir_name
+            dir_name=$(basename "$dir")
+
+            if ! grep -qi "$dir_name" "$TEMP_DIR/installed_apps.txt"; then
+                local size
+                size=$(du -sh "$dir" 2>/dev/null | cut -f1)
+                msg_info "$dir ($size)"
+                ((total_size += $(du -sk "$dir" 2>/dev/null | cut -f1)))
+                ((dir_count++))
+            fi
+        done < <(find "$home_dir/$pattern" -maxdepth 0 -type d 2>/dev/null)
+    done
+
+    if [[ $dir_count -gt 0 ]]; then
+        local total_size_mb=$((total_size / 1024))
+        msg_warn "Found $dir_count unowned directories (~${total_size_mb}MB)"
+    else
+        msg_success "No obvious user directory orphans found"
+    fi
+}
+
+# ============================================
+# Cleanup Functions
+# ============================================
+
+clean_cache() {
+    local days=${1:-${CONFIG[KEEP_CACHE_DAYS]}}
+    local dry_run=${2:-false}
+
+    msg_stage "Cleaning package cache (keeping $days days)"
+
+    if [[ $dry_run == true ]]; then
+        msg_info "Dry run mode - no files will be deleted"
+    fi
+
+    local pacman_cache="/var/cache/pacman/pkg"
+    local cleaned=0
+    local freed_kb=0
+
+    if [[ -d "$pacman_cache" ]]; then
+        if [[ $EUID -ne 0 ]]; then
+            msg_warn "Pacman cache requires root privileges"
+            msg_info "Use: sudo pacman -Scc"
+        else
+            local files=()
+            while IFS= read -r file; do
+                [[ -n "$file" ]] && files+=("$file")
+            done < <(find "$pacman_cache" -name "*.pkg.tar.*" -type f -mtime +"$days" 2>/dev/null)
+
+            local total=${#files[@]}
+
+            if [[ $total -gt 5 ]]; then
+                setup_progress_ui
+                add_progress_bar "Removing pacman cache" "$total"
+                echo
+                echo "------------------------------------------"
+
+                for i in "${!files[@]}"; do
+                    local file="${files[$i]}"
+                    local size_kb
+                    size_kb=$(du -k "$file" 2>/dev/null | cut -f1)
+
+                    if [[ $dry_run == true ]]; then
+                        : # skip
+                    else
+                        rm -f "$file"
+                        freed_kb=$((freed_kb + size_kb))
+                    fi
+                    ((cleaned++))
+                    set_progress_value 0 $((i + 1))
+                    sleep 0.02
+                done
+
+                teardown_progress_ui
+            else
+                for file in "${files[@]}"; do
+                    local size_kb
+                    size_kb=$(du -k "$file" 2>/dev/null | cut -f1)
+                    if [[ $dry_run == true ]]; then
+                        msg_info "[DRY RUN] Remove $file"
+                    else
+                        rm -f "$file"
+                        freed_kb=$((freed_kb + size_kb))
+                    fi
+                    ((cleaned++))
+                done
+            fi
+        fi
+    fi
+
+    local aur_cache_dirs=("$HOME/.cache/yay/pkg" "$HOME/.cache/paru/pkg")
+
+    for cache_dir in "${aur_cache_dirs[@]}"; do
+        if [[ -d "$cache_dir" ]]; then
+            msg_action "Cleaning AUR cache: $cache_dir"
+
+            local files=()
+            while IFS= read -r file; do
+                [[ -n "$file" ]] && files+=("$file")
+            done < <(find "$cache_dir" -name "*.pkg.tar.*" -type f -mtime +"$days" 2>/dev/null)
+
+            local total=${#files[@]}
+
+            if [[ $total -gt 5 ]]; then
+                setup_progress_ui
+                add_progress_bar "Removing AUR cache" "$total"
+                echo
+                echo "------------------------------------------"
+
+                for i in "${!files[@]}"; do
+                    local file="${files[$i]}"
+                    local size_kb
+                    size_kb=$(du -k "$file" 2>/dev/null | cut -f1)
+
+                    if [[ $dry_run == true ]]; then
+                        : # skip
+                    else
+                        rm -f "$file"
+                        freed_kb=$((freed_kb + size_kb))
+                    fi
+                    ((cleaned++))
+                    set_progress_value 0 $((i + 1))
+                    sleep 0.02
+                done
+
+                teardown_progress_ui
+            else
+                for file in "${files[@]}"; do
+                    local size_kb
+                    size_kb=$(du -k "$file" 2>/dev/null | cut -f1)
+                    if [[ $dry_run == true ]]; then
+                        msg_info "[DRY RUN] Remove $file"
+                    else
+                        rm -f "$file"
+                        freed_kb=$((freed_kb + size_kb))
+                    fi
+                    ((cleaned++))
+                done
+            fi
+        fi
+    done
+
+    if [[ $cleaned -gt 0 ]]; then
+        [[ $freed_kb -gt 0 ]] && msg_success "Removed $cleaned files ($(human_size $freed_kb) freed)"
+        [[ $freed_kb -eq 0 ]] && msg_success "Removed $cleaned files"
+    else
+        msg_info "No cache files to clean"
+    fi
+}
+
+clean_orphans() {
+    local dry_run=${1:-false}
+
+    msg_stage "Cleaning orphan packages"
+
+    local orphans
+    orphans=$(pacman -Qdtq)
+
+    if [[ -z "$orphans" ]]; then
+        msg_success "No orphan packages found"
+        return 0
+    fi
+
+    local count
+    count=$(echo "$orphans" | wc -l)
+    msg_warn "Found $count orphan packages:"
+    echo "$orphans" | while read -r pkg; do
+        msg_info "  $pkg"
+    done
+
+    if [[ $dry_run == true ]]; then
+        msg_info "Dry run mode - nothing will be deleted"
+        msg_info "To remove: sudo pacman -Rns \$(pacman -Qdtq)"
+        return 0
+    fi
+
+    read -p $'\n:: Remove these packages? [Y/n] ' -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        msg_info "Aborted"
+        return 0
+    fi
+
+    if [[ $EUID -eq 0 ]]; then
+        pacman -Rns "$(pacman -Qdtq)"
+        msg_success "Orphan packages removed"
+    else
+        msg_error "Root privileges required"
+        msg_info "Run: sudo pacman -Rns \$(pacman -Qdtq)"
+    fi
+}
+
+clean_configs() {
+    local dry_run=${1:-false}
+
+    msg_stage "Cleaning unowned config files"
+
+    scan_config_files >/dev/null 2>&1
+
+    if [[ ! -f "$TEMP_DIR/orphan_configs.txt" ]]; then
+        msg_success "No unowned config files found"
+        return 0
+    fi
+
+    local files=()
+    while IFS= read -r file; do
+        files+=("$file")
+    done <"$TEMP_DIR/orphan_configs.txt"
+
+    local count=${#files[@]}
+
+    if [[ $count -eq 0 ]]; then
+        msg_success "No unowned config files found"
+        return 0
+    fi
+
+    msg_warn "Found $count unowned config files"
+
+    for ((i = 0; i < ${#files[@]} && i < 10; i++)); do
+        msg_info "  ${files[$i]}"
+    done
+    [[ $count -gt 10 ]] && msg_info "  ... ($((count - 10)) more)"
+
+    if [[ $dry_run == true ]]; then
+        msg_info "Dry run mode - nothing will be deleted"
+        return 0
+    fi
+
+    msg_warn "Deleting config files may cause settings loss"
+
+    echo "  [1] delete all"
+    echo "  [2] interactive"
+    echo "  [3] details"
+    echo "  [4] cancel"
+
+    read -r -p $'\n:: Select action [1-4]: ' choice
+
+    case $choice in
+    1)
+        read -p ":: Delete all $count files? [Y/n] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            msg_info "Aborted"
+        else
+            for file in "${files[@]}"; do
+                [[ -f "$file" ]] && rm -f "$file" && msg_info "Removed $file"
+            done
+            msg_success "Removed $count files"
+        fi
+        ;;
+    2)
+        for file in "${files[@]}"; do
+            if [[ -f "$file" ]]; then
+                read -p ":: Delete $file? [Y/n] " -n 1 -r
+                echo
+                [[ $REPLY =~ ^[Yy]$ ]] && rm -f "$file" && msg_info "Removed $file"
+            fi
+        done
+        ;;
+    3)
+        for file in "${files[@]}"; do
+            if [[ -f "$file" ]]; then
+                echo
+                msg_info "File: $file"
+                msg_info "  Size: $(du -h "$file" 2>/dev/null | cut -f1)"
+                msg_info "  Modified: $(stat -c %y "$file" 2>/dev/null | cut -d' ' -f1)"
+            fi
+        done
+        ;;
+    *)
+        msg_info "Cancelled"
+        ;;
+    esac
+}
+
+clean_user_files() {
+    local dry_run=${2:-false}
+
+    msg_stage "Cleaning user directory orphans"
+
+    msg_warn "This feature is experimental"
+    msg_info "Check directories: ~/.config, ~/.cache, ~/.local/share"
+
+    find "$HOME/.config" -maxdepth 1 -type d 2>/dev/null | while read -r dir; do
+        local app
+        app=$(basename "$dir")
+        if ! pacman -Qs "$app" &>/dev/null && ! pacman -Q | grep -qi "$app"; then
+            msg_info "Possible orphan: $dir"
+        fi
+    done
+}
+
+# ============================================
+# Main Functions
+# ============================================
+
+full_scan() {
+    echo
+    msg_stage "Full System Scan"
+    echo
+
+    echo ":: Orphan packages"
+    local orphans
+    orphans=$(pacman -Qdtq)
+    if [[ -n "$orphans" ]]; then
+        msg_warn "Found orphan packages:"
+        echo "$orphans" | sed 's/^/   /'
+    else
+        msg_success "No orphan packages"
+    fi
+    echo
+
+    echo ":: Package cache"
+    scan_cache
+    echo
+
+    echo ":: Config files"
+    scan_config_files >/dev/null
+    echo
+
+    echo ":: Orphan files"
+    scan_orphan_files "${CONFIG[MAX_SCAN_DEPTH]}" >/dev/null
+    echo
+
+    echo ":: User directories"
+    scan_user_files "$USER" "$HOME"
+    echo
+
+    msg_success "Scan complete"
+    msg_info "Log: $LOG_FILE"
+}
+
+smart_clean() {
+    echo
+    msg_stage "Smart Cleanup"
+    echo
+
+    if [[ "${CONFIG[BACKUP_BEFORE_CLEAN]}" == "true" ]]; then
+        backup_state
+    fi
+
+    clean_orphans false
+    clean_cache "${CONFIG[KEEP_CACHE_DAYS]}" false
+
+    echo
+    msg_success "Smart cleanup complete"
+}
+
+safe_clean() {
+    echo
+    msg_stage "Safe Cleanup (cache only)"
+    echo
+    clean_cache "${CONFIG[KEEP_CACHE_DAYS]}" false
+    echo
+    msg_success "Safe cleanup complete"
+}
+
+dry_run() {
+    echo
+    msg_stage "Cleanup Simulation"
+    echo
+
+    echo ":: Orphan packages"
+    clean_orphans true
+    echo
+
+    echo ":: Package cache"
+    clean_cache "${CONFIG[KEEP_CACHE_DAYS]}" true
+    echo
+
+    echo ":: Config files"
+    clean_configs true
+    echo
+
+    msg_info "Review output above"
+}
+
+backup_state() {
+    msg_action "Backing up state"
+
+    local backup_dir="$HOME/.pkg-cleaner-backup/$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+
+    pacman -Qqe >"$backup_dir/explicit_packages.txt"
+    pacman -Qq >"$backup_dir/all_packages.txt"
+
+    msg_info "Backup: $backup_dir"
+}
+
+show_info() {
+    echo
+    msg_stage "System Information"
+    echo
+
+    echo ":: System"
+    msg_info "Distribution : $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '"')"
+    msg_info "Kernel       : $(uname -r)"
+    msg_info "Hostname     : $(hostname)"
+    echo
+
+    echo ":: Packages"
+    msg_info "Explicitly installed : $(pacman -Qe | wc -l)"
+    msg_info "Total installed      : $(pacman -Q | wc -l)"
+    msg_info "Orphans              : $(pacman -Qdtq | wc -l)"
+    echo
+
+    echo ":: Disk Usage"
+    df -h / /home 2>/dev/null | grep -v "Filesystem" | while read -r line; do
+        msg_info "$line"
+    done
+    echo
+
+    echo ":: Cache"
+    if [[ -d "/var/cache/pacman/pkg" ]]; then
+        msg_info "Pacman : $(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)"
+    fi
+    msg_info "Home   : $(du -sh "$HOME" 2>/dev/null | cut -f1)"
+}
+
+show_help() {
+    local me
+    me=$(basename "$0")
+    echo
+    echo -e "${BOLD}pkg-cleaner${NC} - Package cleanup tool for Arch Linux"
+    echo
+    echo -e "${BOLD}USAGE${NC}"
+    echo -e "    $me <operation> [options]"
+    echo
+    echo -e "${BOLD}OPERATIONS${NC}"
+    echo -e "    $me scan       Full system scan"
+    echo -e "    $me clean      Smart cleanup (orphans + cache)"
+    echo -e "    $me safe       Safe cleanup (cache only)"
+    echo -e "    $me dry-run    Simulate cleanup"
+    echo -e "    $me info       Show system info"
+    echo -e "    $me config     Edit config file"
+    echo -e "    $me help       Show this help"
+    echo
+    echo -e "${BOLD}EXAMPLES${NC}"
+    echo -e "    $me scan"
+    echo -e "    $me clean"
+    echo -e "    $me clean --days=30"
+    echo -e "    $me dry-run"
+    echo
+    echo -e "${BOLD}CONFIG${NC}"
+    echo -e "    $CONFIG_FILE"
+    echo
+}
+
+main() {
+    init "$@"
+
+    local command="$1"
+    shift
+
+    case $command in
+    scan | check)
+        full_scan
+        ;;
+    clean | cleanup)
+        smart_clean
+        ;;
+    safe)
+        safe_clean
+        ;;
+    dry-run | dryrun | test)
+        dry_run
+        ;;
+    info | status)
+        show_info
+        ;;
+    config)
+        ${EDITOR:-nano} "$CONFIG_FILE"
+        ;;
+    help | --help | -h | "")
+        show_help
+        ;;
+    *)
+        msg_error "Unknown operation: $command"
+        echo "Try '$(basename "$0") help' for usage"
+        exit 1
+        ;;
+    esac
+
+    cleanup_temp
+}
+
+cleanup_temp() {
+    teardown_progress_ui
+    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
+}
+
+trap 'tput cnorm; exit 130' INT TERM
+trap cleanup_temp EXIT
+
+main "$@"

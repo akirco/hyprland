@@ -2,7 +2,8 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 
-alias vm='nvim'
+alias vm='vim'
+alias vi="vim"
 
 alias ls='eza --color=auto'
 alias la='eza -a'
@@ -14,9 +15,9 @@ alias sb='source ~/.bashrc'
 alias udb='update-desktop-database ~/.local/share/applications/'
 alias hg="history | cut -c 8- | fzf"
 alias rma="eza -a --absolute | xargs -I dir rm dir -rf"
+alias co='cargo'
 
 alias yay="paru"
-alias ipa='paru -S'
 alias upa='paru -Syyu'
 alias rpa='paru -Rsc'
 alias lu='lsparu'
@@ -34,10 +35,10 @@ alias egrep='egrep -E --color=auto'
 alias fgrep='fgrep -F --color=auto'
 alias lgrep="grep -Eo \"(http|https)://[a-zA-Z0-9./?=_-]+\" | sort | uniq"
 
-alias fg='forge-unknown-gnu'
 alias ff='fastfetch'
 alias jo='joshuto'
 alias ya='yazi'
+alias dapi="ds-free-api -c $HOME/.deepseek/config.toml"
 alias mihomoctl='$HOME/.config/hypr/scripts/mihomo'
 alias bp='btop'
 alias icat="kitty +kitten icat"

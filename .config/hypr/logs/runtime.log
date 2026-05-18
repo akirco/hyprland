@@ -1,0 +1,8 @@
+[2026-05-09T09:39:34.444+08:00 INFO   ds_core::accounts] 账号 17320292738 初始化成功
+[2026-05-09T09:39:34.550+08:00 INFO   store] stats.json 不存在，使用零值
+[2026-05-09T09:39:34.551+08:00 INFO   http::server] openai兼容base_url: http://127.0.0.1:22217
+[2026-05-09T09:39:34.551+08:00 INFO   http::server] anthropic兼容base_url: http://127.0.0.1:22217/anthropic
+[2026-05-09T09:39:34.551+08:00 INFO   http::server] 管理面板: http://127.0.0.1:22217/admin
+[2026-05-09T09:41:29.094+08:00 INFO   http::server] 收到关闭信号，开始优雅关闭
+[2026-05-09T09:41:29.094+08:00 INFO   http::server] HTTP 服务已停止，正在清理资源
+[2026-05-09T09:41:29.094+08:00 INFO   http::server] 清理完成

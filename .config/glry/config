@@ -1,0 +1,23 @@
+# glry configuration — uncomment a line to override the default.
+#
+# Color values are ratatui color strings: a named color (black, red,
+# darkgray, …), an 8-bit index (0-255), or "#rrggbb" hex.
+# Boolean values are `true` or `false`.
+
+# header_fg    = "black"
+# header_bg    = "cyan"
+# selection_fg = "black"
+# selection_bg = "cyan"
+# status_fg    = "gray"
+# status_bg    = "black"
+# directory_fg = "yellow"
+# error_fg     = "red"
+# loading_fg   = "darkgray"
+
+# Center-crop grid thumbnails to the cell aspect so every cell is filled
+# (default: true; set to false to letterbox each image inside its cell).
+# thumbnail_crop = true
+
+# Start the fullscreen viewer with the header and status bars hidden.
+# Press `b` in fullscreen to toggle them at runtime (default: false).
+# fullscreen_hide_bars = false

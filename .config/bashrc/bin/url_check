@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+xargs -I {} -P 20 sh -c '
+  code=$(curl -L -m 3 -s -o /dev/null -w "%{http_code}" "{}")
+  if [ "$code" -eq 200 ]; then
+    echo "{}" >> ok.txt
+    echo -e "\e[32m[可用]\e[0m {}"
+  else
+    echo -e "\e[31m[失效]\e[0m $code {}"
+  fi
+'

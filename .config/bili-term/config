@@ -1,0 +1,50 @@
+# Bili-Term 配置文件
+# 用户代理
+USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# 下载目录
+DOWNLOAD_DIR="/home/neil/Videos/bilibili"
+
+# 播放器设置
+VIDEO_PLAYER="mpv"
+PLAYER_ARGS="--border=no --ontop --geometry=960x540+50+50"
+
+# 下载设置
+DOWNLOAD_FORMAT="bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+DOWNLOAD_THREADS=4
+
+# 界面设置
+ENABLE_PREVIEW=true
+PREVIEW_WIDTH=50%
+PREVIEW_HEIGHT=20
+SHOW_STATISTICS=true
+COLOR_SCHEME="default"
+FZF_COLOR="bg+:#101115,bg:#0E1011,border:#FB7299,fg:#c0caf5,hl:#bb9af7,fg+:#c0caf5,hl+:#bb9af7,info:#7dcfff,prompt:#7aa2f7,pointer:#bb9af7,marker:#bb9af7,spinner:#7dcfff,header:#bb9af7"
+
+# 缓存设置
+CACHE_DURATION=3600
+
+# API设置
+API_TIMEOUT=10
+API_RETRY=2
+
+# 搜索设置
+SEARCH_PAGE_SIZE="30"
+SEARCH_MAX_RESULTS=100
+RECOMMEND_PAGE_SIZE="30"
+POPULAR_PAGE_SIZE="30"
+PERSONAL_PAGE_SIZE="30"
+VIDEO_DETAIL_PAGE_SIZE=1
+UP_DETAIL_PAGE_SIZE=1
+
+# 快捷键设置
+KEY_PLAY="enter"
+KEY_PLAY_ALL="alt-enter"
+KEY_DOWNLOAD="ctrl-d"
+KEY_REFRESH="ctrl-r"
+KEY_BACK="esc"
+
+# 代理设置（如需）
+# HTTP_PROXY="http://127.0.0.1:1080"
+# HTTPS_PROXY="http://127.0.0.1:1080"
+

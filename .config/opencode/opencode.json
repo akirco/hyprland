@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "deepseek": {
+      "name": "deepseek",
+      "options": {
+        "baseURL": "http://127.0.0.1:22217/v1",
+        "apiKey": "sk-603ffcd001909b80bc55b7c6012067ec0afc3398295f5c55"
+      },
+      "models": {
+        "deepseek-expert": {
+          "name": "deepseek-expert"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "ydotool": {
+      "type": "local",
+      "command": ["bun", "/home/neil/Projects/bun/ydotool-mcp/src/index.ts"]
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp@latest"]
+    },
+    "zread": {
+      "type": "remote",
+      "url": "https://api.z.ai/api/mcp/zread/mcp",
+      "headers": {
+        "Authorization": "Bearer 08eca8836c2f4bc9b82303b262b98363.NG7tBYbEpzitoWxw"
+      }
+    }
+  }
+}

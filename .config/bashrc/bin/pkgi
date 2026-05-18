@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# pkgs=("pnpm" "bun")
+# agents=("opencode")
+
+
+if [[ -z "$1" ]]; then
+    echo "用法: $(basename "$0") [pnpm|bun]"
+    exit 1
+fi
+
+pkg="$1"
+
+if [[ "$pkg" == "pnpm" ]]; then
+    curl -fsSL https://get.pnpm.io/install.sh | sh -
+elif [[ "$pkg" == "bun" ]]; then
+    curl -fsSL https://bun.sh/install | bash
+else
+    echo "错误：不支持的包管理器。请使用 'pnpm' 或 'bun'。"
+    exit 1
+fi

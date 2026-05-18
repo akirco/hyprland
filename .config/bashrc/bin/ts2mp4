@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+FILE="$1"
+
+ffmpeg -i $FILE -c:v copy -c:a copy "$HOME/Videos/$(date +%s).mp4"

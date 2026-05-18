@@ -7,7 +7,7 @@
 
 /** ********** Main Window ********** **/
 window {
-  background-color: rgba(24, 27, 32, 0.2);
+  background-color: rgba(24, 27, 32, 0.1);
 }
 
 /** ********** Buttons ********** **/
@@ -20,16 +20,15 @@ button {
   animation: gradient_f 20s ease-in infinite;
   transition: all 0.3s ease-in;
   box-shadow: 0 0 10px 2px transparent;
-  border-radius: 30px;
+  border-radius: 36px;
   border:none;
   outline: none;
   margin: 10px;
 }
 
 button:focus,
-button:active,
-button:hover {
-  background-color: rgba(15, 13, 18, 0.5);
+button:active{
+  background-color: rgba(15, 13, 18, 0.2);
   outline-style: none;
 }
 

@@ -1,0 +1,21 @@
+[general]
+mpris_enabled = true
+theme = "dark"
+plugins_enabled = true
+plugins_dir = "/home/neil/.config/rs-pug/plugins"
+music_directories = ["~/Music"]
+
+[search]
+limit = 20
+
+[mpv]
+socket = "/tmp/rs-pug.sock"
+
+[keybinds]
+next = "n"
+prev = "p"
+mute = "m"
+repeat = "r"
+shuffle = "z"
+seek_back = "["
+seek_forward = "]"

@@ -1,0 +1,73 @@
+default_profile = "deepseek"
+default_style = "default"
+default_prompt = "bash_expert"
+
+[[prompts]]
+name = "bash_expert"
+content = "你是一位bash脚本编程专家，精通linux"
+
+[[prompts]]
+name = "linux_expert"
+content = "角色设定：你是一位在 Linux 领域浸淫 20 年的顶级架构师。你对 xargs, awk, sed, grep, jq, find 等工具的运用已臻化境。在你眼里，任何复杂的数据结构（JSON, CSV, Log, XML）都只是等待被管道符拆解的流。任务目标：根据我描述的数据处理需求，直接给出一行（One-Liner）或一段最高效、最符合 Unix 哲学的 Shell 脚本。约束准则：效率至上： 优先选择性能最优的组合（例如：能用 awk 完成的就不要启动多个 grep 和 cut）。语法严谨： 方案必须考虑文件名包含空格、特殊字符等极端情况（如使用 -print0 和 xargs -0）。结果导向： 只输出代码块，除非命令极其复杂，否则不提供冗长的背景介绍。仅在代码下方用一句话点出核心逻辑。POSIX 兼容： 默认使用 Bash/SH，如果是针对特定工具（如 jq 处理 JSON，yq 处理 YAML），请默认已安装这些工具。防御性编程： 命令应尽量幂等且不破坏原始数据（除非明确要求 inplace 修改）。"
+
+[[prompts]]
+name = "ffmpeg_expert"
+content = "你现在是一名精通音视频工程的 ffmpeg 专家。任务： 请根据我提供的文件信息（包括格式、编码、分辨率等）以及我的具体处理需求，直接输出一条可以在终端运行的 ffmpeg 命令。约束条件：严禁解释： 不要解释参数含义，不要说“好的”，不要提供背景知识。唯一输出： 只输出代码块形式的命令。通用路径： 输入文件统一使用 input.mp4（或对应后缀），输出文件统一使用 output.mp4（或对应后缀），除非我指定了特定文件名。高性能优先： 默认使用现代高效的编码参数（如常用 crf 值），除非我有特殊要求"
+
+[[prompts]]
+name = "tldr_expert"
+content = "请为我提供的命令行命令生成一个 TL;DR 风格的说明。专注于最常用和最实用的方面。要求：核心功能： 用一句话概括命令的主要用途。关键用法： 提供 3-5 个最常见的命令示例及其简要说明。注意事项（如果适用）： 提及任何重要的使用技巧或需要避免的常见错误。简洁： 跳过详细的历史、不常用的选项或完整的参数列表。"
+
+[[prompts]]
+name = "commit_expert"
+content = "角色设定：你是一位严谨的软件工程专家，精通 Git 版本控制规范，严格遵循 Conventional Commits 1.0.0 标准。任务目标：我会为你提供代码修改的差异（git diff）或我的口语化描述，请你据此生成一个专业、规范且易于阅读的 Commit Message。结构规范：每个输出必须包含以下三部分：Header (必选)： <type>(<scope>): <subject>（不宜超过 50 字符）。Body (必选)： 详细描述修改的动机、逻辑变更，以及“为什么”这么做，而不是“做了什么”（每行不宜超过 72 字符）。Footer (可选)： 关联的 Issue 编号（如 Fixes #123）或破坏性变更说明。Type 选项（严格执行）：feat: 新功能fix: 修补 Bugdocs: 文档修改style: 格式变动（不影响代码运行的变动，如空格、分号等）refactor: 重构（既不是新增功能，也不是修改 bug 的代码变动）perf: 提高性能的修改test: 添加或修改测试用例chore: 构建过程或辅助工具的变动约束准则：使用祈使句、现在时（如使用 add 而不是 added）。首字母小写，结尾不加句号。只输出 Commit 内容，不解释，不废话。"
+
+[[styles]]
+name = "default"
+background = "reset"
+chat_background = "reset"
+input_background = "reset"
+chat_border_type = "rounded"
+input_border_type = "rounded"
+chat_border_fg = "cyan"
+input_border_fg = "cyan"
+input_show_title = true
+
+
+[[styles]]
+name = "opencode"
+background = "reset"
+chat_background = "#0f0f0f"
+input_background = "#15141b"
+chat_border_type = "rounded"
+input_border_type = "quadrantinside"
+chat_border_fg = "reset"
+input_border_fg = "reset"
+chat_border_style = "none"
+input_border_style = "left"
+chat_show_title = false
+input_show_title = false
+input_height = 5
+
+# API 配置列表
+[[profiles]]
+name = "deepseek"
+api_url = "http://127.0.0.1:22217/v1/chat/completions"
+api_key = "sk-603ffcd001909b80bc55b7c6012067ec0afc3398295f5c55"
+model = "deepseek-expert"
+provider = "openai"
+
+[[profiles]]
+name = "glm"
+api_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+api_key = ""
+model = "glm-4.5-air"
+provider = "openai"
+
+# [[profiles]]
+# name = "claude"
+# api_url = "https://api.anthropic.com/v1/messages"
+# api_key = "your-anthropic-api-key"
+# model = "claude-sonnet-4-5"
+# provider = "anthropic"
+# enable_thinking = false

@@ -11,8 +11,8 @@ automatically_count_files = false
 collapse_preview = true
 # ratios for parent view (optional), current view and preview
 column_ratio = [2, 3, 5]
-scroll_offset = 6
-show_borders = true
+scroll_offset = 2
+show_borders = false
 show_hidden = true
 show_icons = true
 tilde_in_titlebar = true
@@ -28,7 +28,7 @@ reverse = false
 
 [preview]
 preview_protocol = "auto"
-xdg_thumb_size = "xxlarge"
+xdg_thumb_size = "xlarge"
 max_preview_size = 1073741824  # 1 GiB
 preview_script = "~/.config/joshuto/preview_file.sh"
 # preview_shown_hook_script = "~/.config/joshuto/on_preview_shown.sh"

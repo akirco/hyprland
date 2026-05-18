@@ -1,0 +1,7 @@
+[user]
+	email = earlfx@163.com
+	name = akirco
+[init]
+	defaultBranch = main
+[safe]
+	directory = *

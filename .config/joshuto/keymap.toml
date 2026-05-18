@@ -133,12 +133,13 @@ keymap = [
   { keys = ["g", "d"], command = "cd ~/Downloads" },
   { keys = ["g", "e"], command = "cd /etc" },
   { keys = ["g", "h"], command = "cd ~" },
-  { keys = ["g", "s"], command = "cd ~/Projects" },
-  { keys = ["g", "p"], command = "cd ~/Pictures" },
+  { keys = ["g", "p"], command = "cd ~/Projects" },
+  { keys = ["g", "i"], command = "cd ~/Pictures" },
   { keys = ["g", "v"], command = "cd ~/Videos" },
   { keys = ["g", "m"], command = "cd ~/Music" },
   { keys = ["g", "w"], command = "cd ~/Windows" },
   { keys = ["g", "t"], command = "cd ~/Documents" },
+  { keys = ["g", "l"], command = "cd ~/.local" },
   { keys = ["?"], command = "help" },
 ]
 

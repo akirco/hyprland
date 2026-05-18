@@ -1,0 +1,12 @@
+{
+  "wallpaper_paths": [
+    "/home/neil/Pictures/wallpapers"
+  ],
+  "theme_name": "System",
+  "rotation": [],
+  "rotate_all_wallpapers": false,
+  "rotation_same_wallpaper_on_all_displays": true,
+  "rotation_interval_secs": 300,
+  "all_sort": "name",
+  "rotation_sort": "name"
+}

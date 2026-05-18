@@ -1,0 +1,15 @@
+[clipboard]
+# Clipboard backend: "auto" (default), "system", or "osc52"
+# - auto: tries system clipboard first, falls back to OSC 52
+# - system: use only OS clipboard (may not work in SSH/tmux)
+# - osc52: use terminal escape sequences (works in most modern terminals over SSH)
+backend = "auto"
+
+[ai]
+enabled = false
+provider = "openai"
+
+[ai.openai]
+api_key = "08eca8836c2f4bc9b82303b262b98363.NG7tBYbEpzitoWxw"
+base_url = "https://open.bigmodel.cn/api/paas/v4"
+model = "glm-4.5-air"

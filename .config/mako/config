@@ -56,13 +56,13 @@ group-by=category
 
 [app-name=show-keys]
 anchor=bottom-right
-font='JetBrainsMono Nerd Font' 40
+font='JetBrainsMono Nerd Font Bold' 40
 width=300
 height=150
 outer-margin=40
 padding=10
+format=<b>%s</b>\n%b
 text-alignment=center
 background-color=#0e1011CC
-text-color=#ffffff
-default-timeout=600
-
+text-color=#46e097
+default-timeout=1000

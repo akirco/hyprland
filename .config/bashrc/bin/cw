@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+
+# 默认参数
+DIR="."
+PREFIX="image"
+EXT=""
+START_NUM=1
+PADDING=3
+EXT_PROVIDED=false
+
+# Help information
+usage() {
+    echo "Usage: cw [options]"
+    echo ""
+    echo "Options:"
+    echo "  -d dir        Directory to rename files (default: .)"
+    echo "  -p prefix     Prefix for new filenames (default: image)"
+    echo "  -e extension  File extension to filter (default: keep original)"
+    echo "  -n start_num  Starting number (default: 1)"
+    echo "  -w width      Number padding width (default: 3)"
+    echo "  -h            Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  cw"
+    echo "  cw -d ./images -e png"
+    echo "  cw -d ./wallpapers -p photo -n 100 -w 4"
+    exit 1
+}
+
+# Show usage if no arguments
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+# Parse command line options
+while getopts "d:p:e:n:w:h" opt; do
+    case $opt in
+    d) DIR="$OPTARG" ;;
+    p) PREFIX="$OPTARG" ;;
+    e) EXT="$OPTARG"; EXT_PROVIDED=true ;;
+    n) START_NUM="$OPTARG" ;;
+    w) PADDING="$OPTARG" ;;
+    h | *) usage ;;
+    esac
+done
+
+# Trim trailing slashes from DIR (but keep . as is)
+DIR="${DIR%/}"
+[ -z "$DIR" ] && DIR="."
+
+# Trim leading dot from EXT (e.g., .png -> png)
+EXT="${EXT#.}"
+
+# Set file pattern for matching
+if [ "$EXT_PROVIDED" = true ]; then
+    FILE_PATTERN="*.$EXT"
+else
+    FILE_PATTERN="*.*"
+fi
+
+# Check if directory exists
+if [ ! -d "$DIR" ]; then
+    echo "Error: Directory $DIR does not exist."
+    exit 1
+fi
+
+# Enable nullglob: if no files match, variable is empty instead of literal "*.png"
+shopt -s nullglob
+
+# Count total files first
+shopt -s nullglob
+file_list=("$DIR"/$FILE_PATTERN)
+shopt -u nullglob
+total_files=0
+for f in "${file_list[@]}"; do
+    [ -f "$f" ] && ((total_files++))
+done
+
+if [ "$total_files" -eq 0 ]; then
+    echo "No files found to rename."
+    shopt -u nullglob
+    exit 0
+fi
+
+if [ "$EXT_PROVIDED" = true ]; then
+    echo "Renaming $EXT files in $DIR..."
+else
+    echo "Renaming all files in $DIR..."
+fi
+echo "Total: $total_files files"
+
+# Progress bar
+tput civis
+trap "tput cnorm; shopt -u nullglob; exit" EXIT
+
+draw_progress() {
+    local percent=$1
+    local bar_size=40
+    local filled=$((percent * bar_size / 100))
+    local bar
+    bar=$(printf "%${filled}s" | tr ' ' '#')
+    tput sc
+    tput cuu 2
+    local empty_bar
+    empty_bar=$(printf '%*s' $((bar_size - filled)) | tr ' ' '-')
+    printf "\r\e[K[%s%s] %d%% (%d/%d)" "$bar" "$empty_bar" "$percent" "$((renamed_count + skipped_count))" "$total_files"
+    tput rc
+}
+
+n=$START_NUM
+renamed_count=0
+skipped_count=0
+
+# Use Bash glob to iterate files
+for file in "${file_list[@]}"; do
+    [ -f "$file" ] || continue
+
+    # If no extension provided, extract original extension
+    if [ "$EXT_PROVIDED" = false ]; then
+        EXT="${file##*.}"
+    fi
+
+    while true; do
+        # Format number with padding (e.g., 1 -> 001)
+        printf -v padded_n "%0${PADDING}d" "$n"
+        new_name="${DIR}/${PREFIX}_${padded_n}.${EXT}"
+
+        # 1. Check if already perfectly named
+        if [[ "$file" == "$new_name" ]]; then
+            ((skipped_count++))
+            ((n++))
+            break
+        fi
+
+        # 2. Check if target name is already taken
+        if [ -e "$new_name" ]; then
+            ((n++))
+        else
+            # 3. Target name available, rename
+            # Use -- to prevent errors if filename starts with -
+            echo "$file -> $new_name"
+            mv -- "$file" "$new_name"
+            ((renamed_count++))
+            ((n++))
+            break
+        fi
+    done
+
+    # Update progress bar
+    percent=$(((renamed_count + skipped_count) * 100 / total_files))
+    draw_progress "$percent"
+done
+
+# Restore nullglob
+shopt -u nullglob
+tput cnorm
+
+echo ""
+echo "Done!"
+echo "Successfully renamed: $renamed_count files"
+if [ "$skipped_count" -gt 0 ]; then
+    echo "Skipped (already named correctly): $skipped_count files"
+fi

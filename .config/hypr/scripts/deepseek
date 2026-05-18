@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+sleep 30
+nohup "$HOME/.local/bin/ds-free-api" -c "$HOME/.deepseek/config.toml" >> /tmp/deepseek-api.log 2>&1 &

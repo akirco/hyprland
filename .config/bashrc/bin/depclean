@@ -1,0 +1,571 @@
+#!/usr/bin/env bash
+
+# ============================================================================
+# Project Cleaner CLI Tool — Pacman Style
+# Cleans project dependency directories like node_modules, target, .venv, etc.
+# ============================================================================
+
+set -euo pipefail
+
+# ------------------------------- Color Palette ------------------------------ #
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+RESET=$'\033[0m'
+BLUE=$'\033[1;34m'
+GREEN=$'\033[1;32m'
+YELLOW=$'\033[1;33m'
+RED=$'\033[1;31m'
+CYAN=$'\033[1;36m'
+WHITE=$'\033[1;37m'
+MAGENTA=$'\033[1;35m'
+PAC_YELLOW=$'\033[0;33m'
+ORANGE=$'\033[0;33m'
+
+separator() {
+    local title="$1"
+    local sep
+    sep=$(printf '%.0s-' $(seq 1 25))
+    printf "#%s %s %s#\n" "$sep" "$title" "$sep"
+}
+
+# ------------------------ Default Target Directories ------------------------ #
+DEFAULT_TARGETS=(
+    "node_modules" ".venv" "__pycache__" ".pytest_cache"
+    "target" "dist" "build" "*.egg-info"
+    "vendor/bundle" "vendor/cache"
+    ".gradle" ".mvn" "out"
+    ".next" ".nuxt" ".cache" "coverage"
+    ".nyc_output" ".parcel-cache" ".svelte-kit"
+    ".vuepress/dist" "bower_components" "jspm_packages"
+)
+# ------------------------------ State Variables ----------------------------- #
+declare -a TARGET_DIRS=()
+declare -a FOUND_DIRS=()
+declare -a DIR_SIZES=()
+declare -a DELETED_DIRS=()
+declare -a FAILED_DIRS=()
+TOTAL_SIZE_KB=0
+DRY_RUN=false
+VERBOSE=false
+INTERACTIVE=false
+FORCE=false
+ROOT_DIR="."
+SHOW_PROGRESS=true
+CONFIRM_ALL=false
+NOCONFIRM=false
+
+# --------------------------------- Temp file -------------------------------- #
+
+TMP_FILE=""
+if command -v mktemp &>/dev/null; then
+    TMP_FILE=$(mktemp 2>/dev/null || echo "")
+fi
+if [[ -z "$TMP_FILE" ]]; then
+    TMP_FILE="/tmp/cleaner_scan.$$"
+    : >"$TMP_FILE"
+fi
+
+# ============================================================================
+# Error trap — NEVER silently exit again
+# ============================================================================
+err_handler() {
+    local lineno="$1"
+    local cmd="$2"
+    printf '\n\n%b✗ ERROR%b at line %s: %b%s%b\n' \
+        "$RED" "$RESET" "$lineno" "$BOLD" "$cmd" "$RESET" >&2
+    # Clean up
+    [[ -n "$TMP_FILE" && -f "$TMP_FILE" ]] && rm -f "$TMP_FILE" 2>/dev/null || true
+    exit 1
+}
+trap 'err_handler $LINENO "$BASH_COMMAND"' ERR
+
+# ============================================================================
+# Pacman-style UI Primitives
+# ============================================================================
+
+msg_header() { printf "${BOLD}${BLUE}:: ${WHITE}%s${RESET}\n" "$1"; }
+msg_sub() { printf "${BOLD}${BLUE}:: ${WHITE}%s${RESET}\n" "$1"; }
+msg_info() { printf "   %s\n" "$1"; }
+msg_ok() { printf "   ${GREEN}%s${RESET} %s\n" "$1" "$2"; }
+msg_warn() { printf "   ${YELLOW}%s${RESET} %s\n" "$1" "$2"; }
+msg_err() { printf "   ${RED}%s${RESET} %s\n" "$1" "$2" >&2; }
+msg_debug() { if [[ $VERBOSE == true ]]; then printf "${DIM}   %s${RESET}\n" "$1"; fi; }
+
+# ── Pacman Progress Bar ───────
+pacman_progress() {
+    local current=$1 total=$2
+    local width=30
+    if [[ $total -eq 0 ]]; then return; fi
+    local pct=$((total > 0 ? current * 100 / total : 0))
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+
+    local bar=""
+    if [[ $filled -gt 0 ]]; then
+        bar+="${PAC_YELLOW}$(printf '%*s' "$filled" '' | tr ' ' '=')${RESET}"
+    fi
+    if [[ $current -lt $total && $filled -lt $width ]]; then
+        bar+="${MAGENTA}#${RESET}"
+        empty=$((empty - 1))
+    fi
+    if [[ $empty -gt 0 ]]; then
+        bar+="${DIM}$(printf '%*s' "$empty" '' | tr ' ' '.')${RESET}"
+    fi
+
+    printf '\r\033[K  [%s] %3d%%' "$bar" "$pct"
+}
+
+# ── Spinner (rotating cursor)
+show_spinner() {
+    local pid=$1
+    local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local idx=0
+
+    while kill -0 "$pid" 2>/dev/null; do
+        printf '\r   %s%s%s scanning...' "${CYAN}" "${frames[$((idx % ${#frames[@]}))]}" "${RESET}"
+        idx=$((idx + 1))
+        sleep 0.08
+    done
+    printf '\r\033[2K'
+    msg_ok "✓" "Scan complete."
+}
+
+# ============================================================================
+# Helpers
+# ============================================================================
+
+print_help() {
+    cat <<EOF
+ ${BOLD}${BLUE}:: ${WHITE}Project Cleaner${RESET} — dependency directory cleaner
+
+ ${BOLD}Usage:${RESET}
+  $(basename "$0") [options] [directory]
+
+ ${BOLD}Options:${RESET}
+  ${CYAN}-h, --help${RESET}           Show this help message
+  ${CYAN}-d, --dry-run${RESET}        Simulate without actual deletion
+  ${CYAN}-v, --verbose${RESET}        Show detailed information
+  ${CYAN}-i, --interactive${RESET}    Confirm each item before deletion
+  ${CYAN}-f, --force${RESET}          Force deletion without confirmation
+  ${CYAN}-q, --quiet${RESET}          Hide progress bars
+  ${CYAN}-t, --targets${RESET}        Specify targets (comma-separated)
+  ${CYAN}-l, --list-targets${RESET}   Show all default targets
+  ${CYAN}--all${RESET}                Clean all types of targets
+  ${CYAN}--confirm-all${RESET}        Auto-confirm all deletions
+  ${CYAN}--noconfirm${RESET}          Skip all confirmations (same as -f)
+
+ ${BOLD}Examples:${RESET}
+  $(basename "$0")                          # Clean current directory
+  $(basename "$0") ~/projects               # Clean specified directory
+  $(basename "$0") -d -v                    # Dry run with details
+  $(basename "$0") -i                       # Interactive mode
+  $(basename "$0") -t "node_modules,.venv"  # Only clean specific types
+EOF
+}
+
+list_targets() {
+    msg_header "Default target directories"
+    local col=0
+    for target in "${DEFAULT_TARGETS[@]}"; do
+        printf "   ${CYAN}%-20s${RESET}" "$target"
+        col=$((col + 1))
+        if [[ $col -eq 3 ]]; then
+            echo
+            col=0
+        fi
+    done
+    if [[ $col -ne 0 ]]; then
+        echo
+    fi
+}
+
+calculate_size() {
+    local dir=$1
+    if [[ -d "$dir" ]]; then
+        local size
+        size=$(du -sk "$dir" 2>/dev/null | awk '{print $1}')
+        if [[ -n "$size" && "$size" =~ ^[0-9]+$ ]]; then
+            echo "$size"
+        else
+            echo 0
+        fi
+    else
+        echo 0
+    fi
+}
+
+human_readable_size() {
+    local kb=$1
+    if [[ -z "$kb" ]] || [[ "$kb" -eq 0 ]]; then
+        echo "0.00 KiB"
+        return
+    fi
+    echo "$kb" | awk '{
+        sum = $1;
+        split("KiB MiB GiB TiB", v);
+        i = 1;
+        while (sum >= 1024 && i < 4) { sum /= 1024; i++; }
+        printf "%.2f %s", sum, v[i];
+    }'
+}
+
+# ── Pacman-style confirmation ─
+pacman_confirm() {
+    local prompt="$1"
+    local default="${2:-N}"
+
+    if [[ $FORCE == true || $CONFIRM_ALL == true || $NOCONFIRM == true ]]; then
+        if [[ $CONFIRM_ALL == true || $NOCONFIRM == true ]]; then
+            msg_warn "::" "${prompt} [Y/n] ${GREEN}Auto-confirmed${RESET}"
+        fi
+        return 0
+    fi
+
+    if [[ $default == "Y" ]]; then
+        printf "${BOLD}${BLUE}:: ${WHITE}%s ${YELLOW}[Y/n]${RESET} " "$prompt"
+    else
+        printf "${BOLD}${BLUE}:: ${WHITE}%s ${YELLOW}[y/N]${RESET} " "$prompt"
+    fi
+
+    local response=""
+    read -r -n 1 response || true
+    echo
+
+    case "$response" in
+    [Yy]) return 0 ;;
+    [Nn]) return 1 ;;
+    "") if [[ $default == "Y" ]]; then return 0; else return 1; fi ;;
+    *)
+        msg_err "::" "Please enter y or n"
+        return 1
+        ;;
+    esac
+}
+
+# ============================================================================
+# Core Business
+# ============================================================================
+
+scan_directories() {
+    msg_header "Scanning directory: ${CYAN}${ROOT_DIR}${RESET}"
+
+    # Build find arguments safely
+    local find_args=()
+    local i=0
+    for target in "${TARGET_DIRS[@]}"; do
+        if [[ $i -gt 0 ]]; then
+            find_args+=("-o")
+        fi
+        find_args+=("-name" "$target")
+        i=$((i + 1))
+    done
+
+    # Clear temp file
+    : >"$TMP_FILE"
+
+    # Run find in background with spinner
+    find "$ROOT_DIR" -type d \( "${find_args[@]}" \) -prune -print0 2>/dev/null >"$TMP_FILE" &
+    local scan_pid=$!
+
+    show_spinner "$scan_pid"
+    wait "$scan_pid" 2>/dev/null || true
+
+    # Safely read null-separated paths
+    while IFS= read -r -d '' dir 2>/dev/null; do
+        if [[ -n "$dir" ]]; then
+            FOUND_DIRS+=("$dir")
+        fi
+    done <"$TMP_FILE"
+
+    rm -f "$TMP_FILE" 2>/dev/null || true
+}
+
+calculate_all_sizes() {
+    local total=${#FOUND_DIRS[@]}
+    if [[ $total -eq 0 ]]; then
+        return
+    fi
+
+    msg_sub "Computing sizes..."
+    local calc_total_kb=0
+
+    for i in "${!FOUND_DIRS[@]}"; do
+        local dir="${FOUND_DIRS[$i]}"
+        if [[ $VERBOSE == true ]]; then
+            printf '\r\033[2K   %s%s%s' "$DIM" "calculating: ${dir:0:60}" "$RESET"
+        fi
+        local size_kb
+        size_kb=$(calculate_size "$dir")
+        DIR_SIZES[$i]="$size_kb"
+        calc_total_kb=$((calc_total_kb + size_kb))
+    done
+
+    printf '\r\033[2K'
+    msg_ok "✓" "Total size: $(human_readable_size $calc_total_kb)"
+}
+
+# ── Package-list style display ─────────────────────────────────────────────
+display_found_dirs() {
+    local total=${#FOUND_DIRS[@]}
+    local sum_kb=0
+    local shown=0
+
+    echo ""
+    for i in "${!FOUND_DIRS[@]}"; do
+        local dir="${FOUND_DIRS[$i]}"
+        local size_kb="${DIR_SIZES[$i]:-0}"
+        sum_kb=$((sum_kb + size_kb))
+
+        if [[ $VERBOSE == true ]] || [[ $shown -lt 15 ]]; then
+            local base="${dir##*/}"
+            local parent="${dir%/*}"
+            if [[ "$parent" == "$dir" ]]; then
+                parent="."
+            fi
+            printf "   ${GREEN}%-25s${RESET} ${DIM}%-10s${RESET} ${DIM}%s${RESET}\n" \
+                "${base}" "${ORANGE}$(human_readable_size "$size_kb")${RESET}" "${parent}/"
+            shown=$((shown + 1))
+        fi
+    done
+
+    if [[ $VERBOSE == false ]] && [[ $total -gt 15 ]]; then
+        printf "   ${DIM}... and $((total - 15)) more (use -v for full list)${RESET}\n"
+    fi
+
+    echo ""
+    msg_sub "Total: ${BOLD}${total}${RESET} directories, ${BOLD}$(human_readable_size $sum_kb)${RESET} to free"
+}
+
+clean_directories() {
+    local total=${#FOUND_DIRS[@]}
+    if [[ $total -eq 0 ]]; then
+        msg_ok "✓" "No directories found to clean. Your project is tidy!"
+        return
+    fi
+
+    calculate_all_sizes
+    display_found_dirs
+
+    # Overall confirmation (pacman style)
+    if [[ $DRY_RUN == false && $INTERACTIVE == false && $FORCE == false && $CONFIRM_ALL == false && $NOCONFIRM == false ]]; then
+        echo ""
+        if ! pacman_confirm "Proceed with deletion?" "N"; then
+            msg_warn "::" "Operation cancelled."
+            exit 0
+        fi
+    fi
+
+    echo ""
+    msg_header "Removing directories..."
+
+    for i in "${!FOUND_DIRS[@]}"; do
+        local dir="${FOUND_DIRS[$i]}"
+        local size_kb="${DIR_SIZES[$i]:-0}"
+        local current=$((i + 1))
+        local base="${dir##*/}"
+
+        if [[ $SHOW_PROGRESS == true ]]; then
+            pacman_progress "$current" "$total"
+        fi
+
+        if [[ $INTERACTIVE == true && $DRY_RUN == false ]]; then
+            printf '\r\033[2K'
+            if ! pacman_confirm "Remove ${CYAN}${base}${RESET} (${ORANGE}$(human_readable_size "$size_kb")${RESET})?" "N"; then
+                continue
+            fi
+        fi
+
+        if [[ $DRY_RUN == true ]]; then
+            DELETED_DIRS+=("$dir")
+            TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + size_kb))
+            if [[ $VERBOSE == true ]]; then
+                printf '\r\033[2K'
+                msg_warn "△" "Would remove: ${base}  ${ORANGE}$(human_readable_size "$size_kb")${RESET}"
+            fi
+        else
+            if rm -rf "$dir" 2>/dev/null; then
+                DELETED_DIRS+=("$dir")
+                TOTAL_SIZE_KB=$((TOTAL_SIZE_KB + size_kb))
+                if [[ $VERBOSE == true ]]; then
+                    printf '\r\033[2K'
+                    msg_ok "✓" "Removed: ${base}  ${ORANGE}$(human_readable_size "$size_kb")${RESET}"
+                fi
+            else
+                printf '\r\033[2K'
+                msg_err "✗" "Failed: ${base}"
+                FAILED_DIRS+=("$dir")
+            fi
+        fi
+
+        if [[ $SHOW_PROGRESS == true ]]; then
+            sleep 0.02
+        fi
+    done
+
+    if [[ $SHOW_PROGRESS == true ]]; then
+        pacman_progress "$total" "$total"
+        echo ""
+    fi
+}
+
+# ── Pacman-style Summary ──────
+show_summary() {
+    echo ""
+    msg_header "Final Report"
+    echo ""
+
+    if [[ ${#DELETED_DIRS[@]} -gt 0 ]]; then
+        printf "   ${BOLD}${GREEN}Removed${RESET}  (%s)\n" "${#DELETED_DIRS[@]}"
+        for dir in "${DELETED_DIRS[@]}"; do
+            local base="${dir##*/}"
+            local parent="${dir%/*}"
+            if [[ "$parent" == "$dir" ]]; then
+                parent="."
+            fi
+            printf "     ${CYAN}%-22s${RESET} ${DIM}%s${RESET}\n" "$base" "$parent/"
+        done
+        echo ""
+        printf "   ${BOLD}${GREEN}Freed${RESET}    ${ORANGE}%s${RESET} of disk space\n" "$(human_readable_size $TOTAL_SIZE_KB)"
+    fi
+
+    if [[ ${#FAILED_DIRS[@]} -gt 0 ]]; then
+        echo ""
+        printf "   ${BOLD}${RED}Failed${RESET}   (%s)\n" "${#FAILED_DIRS[@]}"
+        for dir in "${FAILED_DIRS[@]}"; do
+            printf "     ${RED}%-22s${RESET}\n" "${dir##*/}"
+        done
+    fi
+
+    if [[ $DRY_RUN == true ]]; then
+        echo ""
+        msg_warn "△" "Dry run — no files were actually deleted"
+    fi
+
+    echo ""
+    separator "End"
+}
+
+# ============================================================================
+# Initialization & Argument Parsing
+# ============================================================================
+
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
+        -d | --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -v | --verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -i | --interactive)
+            INTERACTIVE=true
+            shift
+            ;;
+        -f | --force)
+            FORCE=true
+            shift
+            ;;
+        -q | --quiet)
+            SHOW_PROGRESS=false
+            shift
+            ;;
+        -t | --targets)
+            if [[ -z "${2:-}" ]]; then
+                msg_err "✗" "$1 requires a comma-separated target list"
+                exit 1
+            fi
+            IFS=',' read -ra TARGET_DIRS <<<"$2"
+            shift 2
+            ;;
+        -l | --list-targets)
+            list_targets
+            exit 0
+            ;;
+        --all)
+            TARGET_DIRS=("${DEFAULT_TARGETS[@]}")
+            shift
+            ;;
+        --confirm-all)
+            CONFIRM_ALL=true
+            shift
+            ;;
+        --noconfirm)
+            NOCONFIRM=true
+            shift
+            ;;
+        -*)
+            msg_err "✗" "Unknown option: $1"
+            print_help
+            exit 1
+            ;;
+        *)
+            ROOT_DIR="$1"
+            shift
+            ;;
+        esac
+    done
+
+    if [[ ${#TARGET_DIRS[@]} -eq 0 ]]; then
+        TARGET_DIRS=("${DEFAULT_TARGETS[@]}")
+    fi
+
+    if [[ ! -d "$ROOT_DIR" ]]; then
+        msg_err "✗" "Directory '${ROOT_DIR}' does not exist"
+        exit 1
+    fi
+
+    if [[ $INTERACTIVE == true && $FORCE == true ]]; then
+        msg_warn "△" "Both -i and -f specified; force takes priority"
+        INTERACTIVE=false
+    fi
+
+    if [[ $NOCONFIRM == true && $INTERACTIVE == true ]]; then
+        msg_warn "△" "Both --noconfirm and -i specified; noconfirm takes priority"
+        INTERACTIVE=false
+    fi
+
+    # Dry run implies verbose
+    if [[ $DRY_RUN == true && $VERBOSE == false ]]; then
+        VERBOSE=true
+    fi
+}
+
+# Handle interrupt signals
+cleanup_on_interrupt() {
+    rm -f "$TMP_FILE" 2>/dev/null || true
+    printf '\r\033[2K\n'
+    msg_warn "△" "Interrupted by user"
+    show_summary
+    exit 130
+}
+trap cleanup_on_interrupt INT TERM
+
+# ── Main Entry ────────────────
+main() {
+    echo ""
+
+    parse_arguments "$@"
+
+    if [[ $VERBOSE == true ]]; then
+        msg_header "Configuration"
+        msg_info "Root directory  : ${BOLD}${ROOT_DIR}${RESET}"
+        msg_info "Targets         : ${BOLD}${TARGET_DIRS[*]}${RESET}"
+        msg_info "Mode            : ${BOLD}$([[ $DRY_RUN == true ]] && echo "Dry run" || echo "Actual cleanup")${RESET}"
+        msg_info "Interactive     : ${BOLD}$([[ $INTERACTIVE == true ]] && echo "On" || echo "Off")${RESET}"
+        msg_info "Force           : ${BOLD}$([[ $FORCE == true ]] && echo "On" || echo "Off")${RESET}"
+        echo ""
+    fi
+
+    scan_directories
+    clean_directories
+    show_summary
+}
+
+main "$@"

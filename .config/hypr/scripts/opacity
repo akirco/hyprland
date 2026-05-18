@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+WAYBAR_CSS="$HOME/.config/waybar/style.css"
+
+WAYBAR_ALPHA=$(grep -oP '@define-color waybar-bg rgba\(\d+, \d+, \d+, \K[0-9.]+' "$WAYBAR_CSS" 2>/dev/null || echo "0.9")
+[ -z "$WAYBAR_ALPHA" ] && WAYBAR_ALPHA=0.9
+
 ADDR=$(hyprctl activewindow -j | jq -r '.address')
 [ -z "$ADDR" ] || [ "$ADDR" = "null" ] && exit 0
 
@@ -15,18 +20,20 @@ case $1 in
 "+" | "increase" | "up")
     if (($(echo "$ALPHA >= 1.0" | bc -l))); then
         NEW_ALPHA=1.0
-        hyprctl notify 1 3000 "rgb(FFA500)" "Window Opacity is already at maximum: $NEW_ALPHA"
+        hyprctl notify 1 3000 "rgb(FFA500)" "Opacity is already at maximum: $NEW_ALPHA"
         exit 0
     fi
     NEW_ALPHA=$(awk -v a="$ALPHA" -v s="$STEP" 'BEGIN {a = a + s; if (a > 1.0) a = 1.0; printf "%.1f", a}')
+    NEW_WAYBAR_ALPHA=$(awk -v a="$WAYBAR_ALPHA" -v s="$STEP" 'BEGIN {a = a + s; if (a > 1.0) a = 1.0; printf "%.1f", a}')
     ;;
 "-" | "decrease" | "down")
     if (($(echo "$ALPHA <= 0.1" | bc -l))); then
         NEW_ALPHA=0.1
-        hyprctl notify 1 3000 "rgb(FFA500)" "Window Opacity is already at minimum: $NEW_ALPHA"
+        hyprctl notify 1 3000 "rgb(FFA500)" "Opacity is already at minimum: $NEW_ALPHA"
         exit 0
     fi
     NEW_ALPHA=$(awk -v a="$ALPHA" -v s="$STEP" 'BEGIN {a = a - s; if (a < 0.1) a = 0.1; printf "%.1f", a}')
+    NEW_WAYBAR_ALPHA=$(awk -v a="$WAYBAR_ALPHA" -v s="$STEP" 'BEGIN {a = a - s; if (a < 0.1) a = 0.1; printf "%.1f", a}')
     ;;
 *)
     echo "Usage: $0 [+|-|increase|decrease|up|down]"
@@ -35,7 +42,8 @@ case $1 in
 esac
 
 hyprctl dispatch setprop "address:$ADDR" opacity "$NEW_ALPHA" lock
-
 hyprctl dispatch setprop "address:$ADDR" opacity_override 1 lock
 
-hyprctl notify 1 3000 "rgb(40a02b)" "Window Opacity: $NEW_ALPHA"
+sed -i "s/@define-color waybar-bg rgba(14, 16, 17, [0-9.]*)/@define-color waybar-bg rgba(14, 16, 17, $NEW_WAYBAR_ALPHA)/" "$WAYBAR_CSS"
+
+hyprctl notify 1 3000 "rgb(40a02b)" "Opacity: $NEW_ALPHA (waybar: $NEW_WAYBAR_ALPHA)"

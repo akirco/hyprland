@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+
+SCRIPT=${BASH_SOURCE[0]}
+TYPE_FILE=/tmp/fzfx_index
+NERDFONTS="$HOME/Documents/nerdfont.csv"
+
+
+
+LABELS=(
+    " Images"
+    "󰈙 Docs"
+    " Audios"
+    "  Videos"
+    " Envs"
+    " Cmds"
+    ": Clips"
+    "󰙃 Tldr"
+    "󰙵 App[Installed]"
+    " App"
+    " Nerdfont"
+)
+COUNT=${#LABELS[@]}
+
+[[ ! -f $TYPE_FILE ]] && echo 0 >"$TYPE_FILE"
+
+get_index() { cat "$TYPE_FILE"; }
+set_index() { echo "$1" >"$TYPE_FILE"; }
+
+generate_list() {
+    local idx
+    idx=$(get_index)
+    case $idx in
+        0) fd -e png -e jpg -e jpeg -e gif -e bmp -e webp .;;
+        1) fd -e txt -e md . ;;
+        2) fd -e mp3 -e flac -e wav -e ogg -e m4a . ;;
+        3) fd -e mp4 -e mkv -e webm -e avi -e mov . ;;
+        4) env | awk -F= '{print $1}';;
+        5) cat "${HISTFILE:-$HOME/.bash_history}" 2>/dev/null || echo "# No history" ;;
+        6) cliphist list | cut -f 2- 2>/dev/null || echo "cliphist not installed" ;;
+        7) tldr --list 2>/dev/null || echo "tldr not installed" ;;
+        8) expac -H M --timefmt='%Y/%m/%d %T' '%n\t%l\t' | sort -t$'\t' -k2 -r 2>/dev/null || echo "expac not installed" ;;
+        9) paru -Sl | awk '{pkg=$1"/"$2; printf "%s%s\n", pkg, ($4=="" ? "" : " \uf03d4")}' ;;
+        10) cat "$NERDFONTS" | cut -d',' -f1 ;;
+    esac
+}
+
+print_header() {
+    local idx
+    idx=$(get_index)
+    local width=${COLUMNS:-80}
+    local max_per_line=$((width / 14)) # 每个标签平均约12字符宽
+    ((max_per_line < 1)) && max_per_line=1
+    local out=""
+    for i in "${!LABELS[@]}"; do
+        if ((i == idx)); then
+            out+=$'\e[7m'" ${LABELS[$i]} "$'\e[0m'
+        else
+            out+=" ${LABELS[$i]} "
+        fi
+        if (((i + 1) % max_per_line == 0)); then
+            out+=$'\n'
+        fi
+    done
+    echo "$out"
+}
+
+copy_to_clipboard() {
+    if command -v wl-copy &>/dev/null; then
+        wl-copy && notify-send "Copied!"
+        elif command -v xclip &>/dev/null; then
+        xclip -selection clipboard
+    else
+        echo "  没有可用的剪贴板工具 (wl-copy 或 xclip)" >&2
+    fi
+}
+
+preview_item() {
+    local line="$1"
+    local idx
+    idx=$(get_index)
+    local cols="${FZF_PREVIEW_COLUMNS:-80}"
+    local lines="${FZF_PREVIEW_LINES:-24}"
+    
+    case $idx in
+        0)
+            if command -v chafa &>/dev/null; then
+                chafa --align mid,mid --optimize=3 --animate=false \
+                -s "${cols}x${lines}" "$line"
+            else
+                echo " 请安装 chafa 以预览图片"
+            fi
+        ;;
+        1)
+            if command -v bat &>/dev/null; then
+                bat --color=always --style=numbers --line-range=:500 "$line"
+            else
+                head -n 500 "$line"
+            fi
+        ;;
+        2 | 3)
+            if command -v ffprobe &>/dev/null; then
+                ffprobe -hide_banner -v quiet \
+                -show_entries format=duration,size,bit_rate:stream=index,codec_name,codec_type,width,height,sample_rate,channels \
+                -of default=noprint_wrappers=1 "$line" 2>&1
+                elif command -v mediainfo &>/dev/null; then
+                mediainfo "$line"
+            else
+                file "$line"
+            fi
+        ;;
+        4)
+            echo "$line" | bat -l sh --style=plain 2>/dev/null || echo "$line"
+        ;;
+        5)
+            echo "$line" | bat -l sh --style=plain 2>/dev/null || echo "$line"
+        ;;
+        6)
+            local id
+            id=$(echo "$line" | cut -f1)
+            if [[ -n $id ]] && command -v cliphist &>/dev/null; then
+                cliphist decode "$id" 2>/dev/null || echo "$line"
+            else
+                echo "$line"
+            fi
+        ;;
+        7) echo "$line" | xargs -I app tldr app --color always
+        ;;
+        8) echo "$line" | awk '{print $1}' | xargs -I app paru -Qi app
+        ;;
+        9) echo "$line" | cut -d " " -f 1 | cut -d "/" -f 2  | xargs -I app paru -Si app
+        ;;
+        10) cat "$NERDFONTS" | grep -w "$line" | cut -d',' -f3
+        ;;
+    esac
+}
+
+action=$1
+case "$action" in
+    next)
+        idx=$(get_index)
+        ((idx = (idx + 1) % COUNT))
+        set_index "$idx"
+    ;;
+    prev)
+        idx=$(get_index)
+        ((idx = (idx - 1 + COUNT) % COUNT))
+        set_index "$idx"
+    ;;
+    get-cmd)
+        generate_list
+    ;;
+    header)
+        print_header
+    ;;
+    preview)
+        preview_item "$2"
+    ;;
+    choose)
+        line="${line}"
+        idx=$(get_index)
+        case $idx in
+            0)
+                imv "$line" &>/dev/null &
+                exec "$SCRIPT"
+            ;;
+            1)
+                if command -v foot &>/dev/null; then
+                    foot -e vim "$line" &
+                    elif command -v kitty &>/dev/null; then
+                    kitty -- vim "$line" &
+                else
+                    echo "未找到终端模拟器，无法打开 vim" >&2
+                fi
+                exec "$SCRIPT"
+            ;;
+            2)
+                ffplay -nodisp "$line" &>/dev/null &
+                exec "$SCRIPT"
+            ;;
+            3)
+                mpv "$line" &>/dev/null &
+                exec "$SCRIPT"
+            ;;
+            4)
+                eval "printf '%s' \"\$$line\"" | copy_to_clipboard
+                exec "$SCRIPT"
+            ;;
+            5)
+                if command -v foot &>/dev/null; then
+                    foot -e bash -c "echo '> $line'; eval \"$line\";" &
+                else
+                    echo "未找到终端模拟器，无法执行命令" >&2
+                fi
+                exec "$SCRIPT"
+            ;;
+            6)
+                cliphist decode "$(echo "$line" | cut -f1)" 2>/dev/null | copy_to_clipboard
+                exec "$SCRIPT"
+            ;;
+            8)
+                echo "$line" | awk '{print $1}' | xargs -ro sudo pacman -Rnsc
+                exec "$SCRIPT"
+            ;;
+            9)
+                echo "$line" | cut -d " " -f 1 | cut -d "/" -f 2 | xargs -ro paru -S
+                exec "$SCRIPT"
+            ;;
+            10) cat "$NERDFONTS" | grep -w "$line" | cut -d',' -f3 | copy_to_clipboard
+                exec "$SCRIPT"
+            ;;
+            *)
+                exec "$SCRIPT"
+            ;;
+        esac
+    ;;
+    *)
+        export SCRIPT TYPE_FILE
+        fzf --style full \
+        --prompt '❱ ' \
+        --reverse \
+        --header "$(print_header)" \
+        --bind "start:reload($SCRIPT get-cmd)" \
+        --bind "tab:execute-silent($SCRIPT next)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)" \
+        --bind "shift-tab:execute-silent($SCRIPT prev)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)" \
+        --bind "enter:become(line={} $SCRIPT choose)" \
+        --preview "$SCRIPT preview {}" \
+        --preview-window="right:60%:wrap"
+    ;;
+esac

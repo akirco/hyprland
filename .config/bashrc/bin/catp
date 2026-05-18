@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# 格式设定为: 包名(\t)日期(\t)大小
+# sort 参数解释:
+#   -t $'\t' : 指定分隔符为 Tab
+#   -k2      : 按第2列(日期)排序
+#   -r       : 反向排序(降序)，即最新的在前面
+pkg_list=$(expac -H M --timefmt='%Y/%m/%d %T' '%n\t%l\t%m' | sort -t$'\t' -k2 -r)
+
+if [[ -z "$pkg_list" ]]; then
+    echo "没有找到已安装的包。"
+    exit 0
+fi
+
+# --with-nth=2,3,1: 显示时调整顺序为 "日期 大小 包名" (保持原有视觉风格)
+# --preview: 选中时右侧显示 pacman -Qi 信息
+selection=$(
+    echo "$pkg_list" | fzf \
+        --cycle \
+        --style=full \
+        --layout=reverse \
+        --multi \
+        --prompt='❱ ' \
+        --header='Enter: View details | Ctrl-D: Uninstall selected | Tab: Multi select' \
+        --with-nth=2,3,1 \
+        --preview='pacman -Qi {1}' \
+        --bind 'enter:accept' \
+        --bind 'ctrl-d:accept' \
+        --expect=ctrl-d,enter
+)
+
+if [[ -z "$selection" ]]; then
+    exit 0
+fi
+
+key=$(head -1 <<<"$selection")
+pkgs=$(tail -n +2 <<<"$selection" | awk '{print $1}')
+
+case "$key" in
+enter)
+    pacman -Qi "$pkgs"
+    ;;
+ctrl-d)
+    echo "Uninstall the following pkgs: $pkgs"
+    sudo pacman -Rnsc "$pkgs"
+    ;;
+esac
