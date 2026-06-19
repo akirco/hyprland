@@ -31,3 +31,11 @@ proxy_on
 # BASHRC_END_TIME=$(date +%s%3N)
 # BASHRC_LOAD_TIME=$((BASHRC_END_TIME - BASHRC_START_TIME))
 # echo "bashrc loaded in ${BASHRC_LOAD_TIME}ms"
+
+# pnpm
+export PNPM_HOME="/home/neil/.pnpm"
+case ":$PATH:" in
+    *":$PNPM_HOME/bin:"*) ;;
+    *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+# pnpm end

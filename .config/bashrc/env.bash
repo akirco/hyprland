@@ -14,6 +14,7 @@ export BUN_INSTALL="$HOME/.bun"
 export BUN_INSTALL_CACHE_DIR="$BUN_INSTALL/cache"
 export PNPM_HOME="$HOME/.pnpm"
 export FNM_DIR="$HOME/.fnm"
+export ANDROID_HOME="$HOME/.android/android-sdk"
 
 export GOPATH="$HOME/.go"
 export GO111MODULE=on
