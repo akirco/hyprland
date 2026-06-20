@@ -33,6 +33,8 @@ export FZF_DEFAULT_OPTS="$FZF_DEFAULT_OPTS \
   --marker='◆' \
   --gutter='│'"
 
+
+
 ansi_art_lines=(
     "                                [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m            "
     "[38;2;153;255;255m█[0m[38;2;153;255;255m█[0m      [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m    [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m[38;2;153;255;255m█[0m[38;2;153;255;255m█[0m[38;2;153;255;255m█[0m[38;2;153;255;255m█[0m            [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m  [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m      [38;2;153;255;255m█[0m[38;2;153;255;255m█[0m"
@@ -55,7 +57,7 @@ get_term_size() {
 }
 
 strip_ansi() {
-    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<<"$1"
+    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$1"
 }
 
 splash_screen() {
@@ -68,19 +70,19 @@ splash_screen() {
         local stripped
         stripped=$(strip_ansi "$line")
         local len=${#stripped}
-        if ((len > art_width)); then
+        if (( len > art_width )); then
             art_width=$len
         fi
     done
 
-    local top_padding=$(((term_rows - art_height) / 2))
-    ((top_padding < 0)) && top_padding=0
+    local top_padding=$(( (term_rows - art_height) / 2 ))
+    (( top_padding < 0 )) && top_padding=0
 
-    local left_padding=$(((term_cols - art_width) / 2))
-    ((left_padding < 0)) && left_padding=0
+    local left_padding=$(( (term_cols - art_width) / 2 ))
+    (( left_padding < 0 )) && left_padding=0
 
     clear
-    for ((i = 0; i < top_padding; i++)); do
+    for (( i=0; i<top_padding; i++ )); do
         echo ""
     done
     for line in "${ansi_art_lines[@]}"; do
@@ -89,30 +91,29 @@ splash_screen() {
     done
 
     echo ""
-    sleep 0.5
+    sleep 0.3
     clear
 }
 
 hidden_cursor() {
     echo -ne "\e[?25l"
 }
-restore_cursor() {
+restore_cursor(){
     echo -ne "\e[?25h"
 }
 
+
+
 get_index() { cat "$TYPE_FILE" 2>/dev/null || echo 0; }
-set_index() { echo "$1" >"$TYPE_FILE"; }
+set_index() { echo "$1" > "$TYPE_FILE"; }
 get_page() { cat "$PAGE_FILE" 2>/dev/null || echo 1; }
-set_page() { echo "$1" >"$PAGE_FILE"; }
+set_page() { echo "$1" > "$PAGE_FILE"; }
 get_mode() { cat "$MODE_FILE" 2>/dev/null || echo "class"; }
-set_mode() { echo "$1" >"$MODE_FILE"; }
+set_mode() { echo "$1" > "$MODE_FILE"; }
 
 check_deps() {
     for cmd in vod jq fzf socat; do
-        command -v "$cmd" >/dev/null 2>&1 || {
-            echo "Error: missing $cmd"
-            exit 1
-        }
+        command -v "$cmd" >/dev/null 2>&1 || { echo "Error: missing $cmd"; exit 1; }
     done
 }
 
@@ -138,11 +139,11 @@ print_header() {
         echo "  历史记录"
     else
         local idx=$(get_index)
-        local total=$(wc -l <"$CLASS_FILE" 2>/dev/null || echo 0)
+        local total=$(wc -l < "$CLASS_FILE" 2>/dev/null || echo 0)
         [ "$total" -eq 0 ] && return
 
-        local prev_idx=$(((idx - 1 + total) % total))
-        local next_idx=$(((idx + 1) % total))
+        local prev_idx=$(( (idx - 1 + total) % total ))
+        local next_idx=$(( (idx + 1) % total ))
 
         local prev_name=$(sed -n "$((prev_idx + 1))p" "$CLASS_FILE" 2>/dev/null | cut -f2)
         local curr_name=$(sed -n "$((idx + 1))p" "$CLASS_FILE" 2>/dev/null | cut -f2)
@@ -160,7 +161,7 @@ print_footer() {
         echo " esc 返回 / ↵ 播放"
     else
         local page=$(get_page)
-        local total=$(wc -l <"$CLASS_FILE" 2>/dev/null || echo 0)
+        local total=$(wc -l < "$CLASS_FILE" 2>/dev/null || echo 0)
         local default_mark=""
         [ -f "$DEFAULT_CLASS_FILE" ] && default_mark=" ● 默认"
         echo "Tab分类 Ctrl+n/p翻页 Ctrl+r刷新 Ctrl+d设默认 | /搜索 | 页:$page/$total | ↵ 播放$default_mark"
@@ -205,19 +206,19 @@ generate_list() {
 }
 
 next_class() {
-    local total=$(wc -l <"$CLASS_FILE" 2>/dev/null || echo 0)
+    local total=$(wc -l < "$CLASS_FILE" 2>/dev/null || echo 0)
     [ "$total" -eq 0 ] && return
     local idx=$(get_index)
-    idx=$(((idx + 1) % total))
+    idx=$(( (idx + 1) % total ))
     set_index "$idx"
     set_page 1
 }
 
 prev_class() {
-    local total=$(wc -l <"$CLASS_FILE" 2>/dev/null || echo 0)
+    local total=$(wc -l < "$CLASS_FILE" 2>/dev/null || echo 0)
     [ "$total" -eq 0 ] && return
     local idx=$(get_index)
-    idx=$(((idx - 1 + total) % total))
+    idx=$(( (idx - 1 + total) % total ))
     set_index "$idx"
     set_page 1
 }
@@ -240,7 +241,7 @@ reload() {
 
 set_default_class() {
     local idx=$(get_index)
-    echo "$idx" >"$DEFAULT_CLASS_FILE"
+    echo "$idx" > "$DEFAULT_CLASS_FILE"
 }
 
 clear_default_class() {
@@ -277,11 +278,11 @@ add_history() {
     local line="$timestamp	$name	$id	$play_url	$pic	$blurb	$director	$actor"
     if [ -f "$HISTORY_FILE" ]; then
         if ! grep -q "^.*	$id	" "$HISTORY_FILE"; then
-            echo "$line" | cat - "$HISTORY_FILE" >"${HISTORY_FILE}.tmp"
+            echo "$line" | cat - "$HISTORY_FILE" > "${HISTORY_FILE}.tmp"
             mv "${HISTORY_FILE}.tmp" "$HISTORY_FILE"
         fi
     else
-        echo "$line" >"$HISTORY_FILE"
+        echo "$line" > "$HISTORY_FILE"
     fi
 }
 
@@ -316,7 +317,7 @@ preview_item() {
 
     local title_len=${#name}
     local cols=${FZF_PREVIEW_COLUMNS:-80}
-    local pad=$(((cols - title_len - 4) / 2))
+    local pad=$(( (cols - title_len - 4) / 2 ))
     printf "%${pad}s%s%${pad}s\n" "" "$name" ""
     echo "$blurb" | fold -s -w "${cols}" | head -3
     echo -e "\033[1;33m演员:\033[0m $actor" | head -1
@@ -363,112 +364,109 @@ choose_item() {
     fi
 
     local playlist=$(mktemp /tmp/vod_playlist.XXXXX.m3u)
-    echo "#EXTM3U" >"$playlist"
+    echo "#EXTM3U" > "$playlist"
 
     while IFS= read -r ep; do
         if [ -n "$ep" ]; then
             local url=$(echo "$play_url" | tr '#' '\n' | grep -F "$ep" | head -1 | cut -d'$' -f2)
             if [ -n "$url" ]; then
-                echo "#EXTINF:-1,$ep" >>"$playlist"
-                echo "$url" >>"$playlist"
+                echo "#EXTINF:-1,$ep" >> "$playlist"
+                echo "$url" >> "$playlist"
             fi
         fi
-    done <<<"$selected"
+    done <<< "$selected"
 
     start_mpv() {
-        if ! pgrep -x "mpv" >/dev/null 2>&1; then
-            mpv --idle=yes --input-ipc-server="$MPV_SOCKET" >/dev/null 2>&1 &
-            sleep 0.3
-        fi
-    }
+    if ! pgrep -x "mpv" > /dev/null 2>&1; then
+        mpv --idle=yes --input-ipc-server="$MPV_SOCKET" >/dev/null 2>&1 &
+        sleep 0.5
+    fi
+}
 
-    ipc_send() {
-        [ -S "$MPV_SOCKET" ] && echo "$1" | socat - "$MPV_SOCKET" >/dev/null 2>&1
-    }
+ipc_send() {
+    [ -S "$MPV_SOCKET" ] && echo "$1" | socat - "$MPV_SOCKET" >/dev/null 2>&1
+}
 
-    start_mpv
+start_mpv
 
-    local first_ep=$(echo "$selected" | head -1)
-    local title="$name - $first_ep"
+local first_ep=$(echo "$selected" | head -1)
+local title="$name - $first_ep"
 
-    $SCRIPT add_history "$name" "$id" "$play_url" "$pic" "$blurb" "$director" "$actor"
+$SCRIPT add_history "$name" "$id" "$play_url" "$pic" "$blurb" "$director" "$actor"
 
-    ipc_send "{\"command\": [\"set\", \"title\", \"$title\"]}"
-    ipc_send "{\"command\": [\"loadlist\", \"$playlist\", \"replace\"]}"
+ipc_send "{\"command\": [\"set\", \"title\", \"$title\"]}"
+ipc_send "{\"command\": [\"loadlist\", \"$playlist\", \"replace\"]}"
 
-    rm -f "$playlist"
-    set_mode "class"
+rm -f "$playlist"
+set_mode "class"
 
-    exec "$SCRIPT"
+exec "$SCRIPT"
 }
 
 action=$1
 case "$action" in
-next) next_class ;;
-prev) prev_class ;;
-page_next) next_page ;;
-page_prev) prev_page ;;
-toggle_search) toggle_search ;;
-toggle_history) toggle_history ;;
-add_history) add_history "$2" "$3" "$4" "$5" "$6" "$7" "$8" ;;
-get_history) get_history ;;
-reload) reload ;;
-set_default) set_default_class ;;
-clear_default) clear_default_class ;;
-get-cmd) generate_list ;;
-get-history) generate_history_list ;;
-search)
-    if [ "$(get_mode)" = "search" ]; then
-        search_list "$2"
-    else
-        generate_list
-    fi
+    next) next_class ;;
+    prev) prev_class ;;
+    page_next) next_page ;;
+    page_prev) prev_page ;;
+    toggle_search) toggle_search ;;
+    toggle_history) toggle_history ;;
+    add_history) add_history "$2" "$3" "$4" "$5" "$6" "$7" "$8" ;;
+    get_history) get_history ;;
+    reload) reload ;;
+    set_default) set_default_class ;;
+    clear_default) clear_default_class ;;
+    get-cmd) generate_list ;;
+    get-history) generate_history_list ;;
+    search)
+        if [ "$(get_mode)" = "search" ]; then
+            search_list "$2"
+        else
+            generate_list
+        fi
     ;;
-header) print_header ;;
-footer) print_footer ;;
-preview) preview_item "$2" ;;
-choose) choose_item "$2" ;;
-*)
-    check_deps
-    splash_screen
-    fetch_classes
-    [ ! -s "$CLASS_FILE" ] && {
-        echo "Error: no classes found"
-        exit 1
-    }
-    [ ! -f "$TYPE_FILE" ] && echo 0 >"$TYPE_FILE"
-    if [ -f "$DEFAULT_CLASS_FILE" ]; then
-        cat "$DEFAULT_CLASS_FILE" >"$TYPE_FILE"
-    fi
-    [ ! -f "$PAGE_FILE" ] && echo 1 >"$PAGE_FILE"
-    [ ! -f "$MODE_FILE" ] && echo "class" >"$MODE_FILE"
+    header) print_header ;;
+    footer) print_footer ;;
+    preview) preview_item "$2" ;;
+    choose) choose_item "$2" ;;
+    *)
+        check_deps
+        splash_screen
+        fetch_classes
+        [ ! -s "$CLASS_FILE" ] && { echo "Error: no classes found"; exit 1; }
+        [ ! -f "$TYPE_FILE" ] && echo 0 > "$TYPE_FILE"
+        if [ -f "$DEFAULT_CLASS_FILE" ]; then
+            cat "$DEFAULT_CLASS_FILE" > "$TYPE_FILE"
+        fi
+        [ ! -f "$PAGE_FILE" ] && echo 1 > "$PAGE_FILE"
+        [ ! -f "$MODE_FILE" ] && echo "class" > "$MODE_FILE"
 
-    export SCRIPT TYPE_FILE PAGE_FILE CLASS_FILE CACHE_DIR MODE_FILE
-    restore_cursor
-    fzf --style full \
-        --prompt '󰟞 ❯ ' \
-        --reverse \
-        --header "$(print_header)" \
-        --footer "$(print_footer)" \
-        --bind "start:reload($SCRIPT get-cmd)" \
-        --bind "ctrl-h:execute-silent($SCRIPT toggle_history)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
-        --bind "tab:execute-silent($SCRIPT next)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
-        --bind "shift-tab:execute-silent($SCRIPT prev)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
-        --bind "ctrl-n:execute-silent($SCRIPT page_next)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
-        --bind "ctrl-p:execute-silent($SCRIPT page_prev)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
-        --bind "ctrl-r:execute($SCRIPT reload)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
-        --bind "ctrl-d:execute-silent($SCRIPT set_default)" \
-        --bind "ctrl-\:execute-silent($SCRIPT clear_default)" \
-        --bind "?:change-preview-window:left|right" \
-        --bind "ctrl-/:change-preview-window:hidden|left" \
-        --bind "/:execute-silent($SCRIPT toggle_search)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)+change-prompt( ❯ )" \
-        --bind "esc:execute-silent($SCRIPT toggle_search)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)+change-prompt(󰟞 ❯ )+reload($SCRIPT get-cmd)" \
-        --bind "change:reload($SCRIPT search {q})" \
-        --bind "enter:become($SCRIPT choose {})" \
-        --delimiter='	' \
-        --with-nth=1 \
-        --preview-window="left:45%:wrap" \
-        --preview-window="left:45%:wrap" \
-        --preview="$SCRIPT preview {}"
+        export SCRIPT TYPE_FILE PAGE_FILE CLASS_FILE CACHE_DIR MODE_FILE
+        restore_cursor
+        fzf --style full \
+            --prompt '󰟞 ❯ ' \
+            --reverse \
+            --header "$(print_header)" \
+            --footer "$(print_footer)" \
+            --bind "start:reload($SCRIPT get-cmd)" \
+            --bind "ctrl-h:execute-silent($SCRIPT toggle_history)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
+            --bind "tab:execute-silent($SCRIPT next)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
+            --bind "shift-tab:execute-silent($SCRIPT prev)+reload($SCRIPT get-cmd)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)" \
+            --bind "ctrl-n:execute-silent($SCRIPT page_next)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
+            --bind "ctrl-p:execute-silent($SCRIPT page_prev)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
+            --bind "ctrl-r:execute($SCRIPT reload)+reload($SCRIPT get-cmd)+transform-footer($SCRIPT footer)" \
+            --bind "ctrl-d:execute-silent($SCRIPT set_default)" \
+            --bind "ctrl-\:execute-silent($SCRIPT clear_default)" \
+            --bind "?:change-preview-window:left|right" \
+            --bind "ctrl-/:change-preview-window:hidden|left" \
+            --bind "/:execute-silent($SCRIPT toggle_search)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)+change-prompt( ❯ )" \
+            --bind "esc:execute-silent($SCRIPT toggle_search)+transform-header($SCRIPT header)+transform-footer($SCRIPT footer)+change-prompt(󰟞 ❯ )+reload($SCRIPT get-cmd)" \
+            --bind "change:reload($SCRIPT search {q})" \
+            --bind "enter:become($SCRIPT choose {})" \
+            --delimiter='	' \
+            --with-nth=1 \
+            --preview-window="left:45%:wrap" \
+            --preview-window="left:45%:wrap" \
+            --preview="$SCRIPT preview {}"
     ;;
 esac
