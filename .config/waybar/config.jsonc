@@ -7,13 +7,15 @@
   "exclusive": true,
   "passthrough": false,
   "gtk-layer-shell": true,
-  "height": 52,
+  "height": 50,
   "modules-left": [
     "clock",
-    "hyprland/window"
+    "hyprland/workspaces"
+    //"niri/window",
+    //"niri/workspaces"
   ],
   "modules-center": [
-    "hyprland/workspaces"
+    "hyprland/window"
   ],
   "modules-right": [
     "custom/cpucat",
@@ -43,6 +45,16 @@
         "weekdays": "<span color='#fab387'><b>{}</b></span>",
         "today": "<span color='#f38ba8'><b><u>{}</u></b></span>"
       }
+    }
+  },
+  "niri/workspaces": {
+    "format": "{icon}",
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5"
     }
   },
   "hyprland/workspaces": {
@@ -77,6 +89,22 @@
     },
     "separate-outputs": true,
     "max-length": 48,
+    "swap-icon-label": false
+  },
+  "niri/window": {
+    "format": "{}",
+    "rewrite": {
+      "(.*) - Google Chrome": "  - $1",
+      "(.*) - Nvim": "  - $1",
+      "(.*) - Visual Studio Code": "  - $1",
+      "(.*) - Thunar": "󰉓  - $1",
+      "(.*) - Microsoft Edge": "󰇩  - $1",
+      "(.*) - mpv": "  - $1",
+      "Telegram .*": "  - Telegram",
+      "Search...": "  - Search"
+    },
+    "separate-outputs": true,
+    "max-length": 30,
     "swap-icon-label": false
   },
   "cpu": {

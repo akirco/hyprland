@@ -1,33 +1,44 @@
 #!/usr/bin/env bash
 
+for cmd in makoctl notify-send libinput pkexec; do
+  if ! command -v "$cmd" &>/dev/null; then
+    if [[ "$cmd" == "libinput" ]]; then
+      notify-send "Error: $cmd is not installed. Please install libinput-tools." >&2
+    else
+      notify-send "Error: $cmd is not installed." >&2
+    fi
+    exit 1
+  fi
+done
+
 CURRENT_MODES=$(makoctl mode)
 
 if echo "$CURRENT_MODES" | grep -q "showkeys"; then
-    makoctl mode -r showkeys
-    pkill -f "libinput debug-events"
-    notify-send -t 1000 "ShowKeys" "已关闭"
-    exit 0
+  makoctl mode -r showkeys
+  pkill -f "libinput debug-events"
+  notify-send -t 1000 "ShowKeys" "已关闭"
+  exit 0
 else
-    makoctl mode -a showkeys
-    notify-send -t 1000 "ShowKeys" "已开启"
+  makoctl mode -a showkeys
+  notify-send -t 1000 "ShowKeys" "已开启"
 fi
 
-DEV=$(libinput list-devices | grep -A 10 "Keyboard" | grep "Kernel:" | head -n 1 | awk '{print $2}')
+DEV=$(pkexec libinput list-devices | grep -A 10 "Keyboard" | grep "Kernel:" | head -n 1 | awk '{print $2}')
 
 pkexec libinput debug-events --show-keycodes --device "$DEV" | while read -r line; do
-    if ! makoctl mode | grep -q "showkeys"; then break; fi
+  if ! makoctl mode | grep -q "showkeys"; then break; fi
 
-    if [[ "$line" == *"pressed"* ]]; then
-        key_name=$(echo "$line" | grep -oP 'KEY_[A-Z0-9_]+' | sed 's/KEY_//')
+  if [[ "$line" == *"pressed"* ]]; then
+    key_name=$(echo "$line" | grep -oP 'KEY_[A-Z0-9_]+' | sed 's/KEY_//')
 
-        case $key_name in
-        SPACE) key="␣" ;;
-        ENTER) key="⏎" ;;
-        BACKSPACE) key="⌫" ;;
-        LEFTSHIFT | RIGHTSHIFT) key="⇧" ;;
-        *) key="$key_name" ;;
-        esac
-        notify-send -a "show-keys" -t 800 " " "$key"
-        # notify-send -a "show-keys" -t 800 -h string:x-canonical-private-synchronous:key " " "$key"
-    fi
+    case $key_name in
+    SPACE) key="␣" ;;
+    ENTER) key="⏎" ;;
+    BACKSPACE) key="⌫" ;;
+    LEFTSHIFT | RIGHTSHIFT) key="⇧" ;;
+    *) key="$key_name" ;;
+    esac
+    #notify-send -a "show-keys" -t 800 " " "$key"
+    notify-send -a "show-keys" -t 800 -h string:x-canonical-private-synchronous:key " " "$key"
+  fi
 done &
