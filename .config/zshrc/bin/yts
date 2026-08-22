@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+
+#=============================================================================
+# YOUTUBE SEARCH EXTRACTOR (ROBUST VERSION)
+#=============================================================================
+
+# 检查依赖
+check_dependencies() {
+    local missing_deps=()
+    for dep in curl jq grep; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing_deps+=("$dep")
+        fi
+    done
+
+    if [[ ${#missing_deps[@]} -ne 0 ]]; then
+        echo "Error: Missing required dependencies: ${missing_deps[*]}"
+        exit 1
+    fi
+
+    # 检查 grep 是否支持 -P (Perl 兼容正则)
+    if ! grep -P 'test' <<<'test' &>/dev/null; then
+        echo "Error: Your version of grep does not support -P (Perl regex)."
+        exit 1
+    fi
+}
+
+# 核心搜索函数
+fetch_search_results() {
+    local search_query="$1"
+    local limit="${2:-10}" # 默认返回10个结果
+
+    # 1. 对查询字符串进行 URL 编码
+    local encoded_query
+    encoded_query=$(printf '%s' "$search_query" | jq -sRr @uri)
+
+    # 2. 构造搜索 URL (保持与原脚本一致)
+    local url="https://www.youtube.com/results?search_query=${encoded_query}&sp=EgIQAQ%253D%253D&hl=en&gl=US"
+
+    #echo "[*] Searching YouTube for: $search_query" >&2
+
+    # 3. 获取 HTML 内容
+    # 使用 -s 参数静默模式，避免进度条干扰 JSON 解析
+    local html_content
+    if ! html_content=$(curl -s "$url"); then
+        echo "Error: Failed to fetch search results." >&2
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+cursor_trail 10
+        return 1
+    fi
+
+    # 4. 提取 JSON 数据
+    # 修改点：使用 grep -oP 替换 sed，这是原脚本 search_channel 函数中使用的更稳健的方法
+    # \K 忽略匹配到的 'var ytInitialData = ' 前缀
+    # (?=...</script>) 是前瞻断言，匹配到 </script> 为止但不包含它
+    local json_data
+    json_data=$(echo "$html_content" | grep -oP 'var ytInitialData = \K.*?(?=;</script>)')
+
+    # 检查是否提取到了数据
+    if [[ -z "$json_data" ]]; then
+        echo "Error: Failed to extract JSON data (YouTube structure might have changed)." >&2
+        return 1
+    fi
+
+    # 检查 JSON 有效性
+    if ! jq -e . >/dev/null 2>&1 <<<"$json_data"; then
+        echo "Error: Extracted data is not valid JSON." >&2
+        return 1
+    fi
+
+    # 5. 使用 jq 解析并格式化输出
+    # 保持原脚本 fetch_search_results 的递归解析逻辑
+    echo "$json_data" | jq -r "
+      [
+        .. | objects |
+        select(has(\"videoRenderer\")) |
+        .videoRenderer | {
+          title: .title.runs[0].text,
+          videoId: .videoId,
+          url: (\"https://www.youtube.com/watch?v=\" + .videoId),
+          author: .longBylineText.runs[0].text,
+          duration: .lengthText.simpleText,
+          views: .viewCountText.simpleText
+        }
+      ] | .[:${limit}]
+      "
+}
+
+#=============================================================================
+# MAIN
+#=============================================================================
+
+check_dependencies
+
+# 如果没有提供参数，提示输入
+if [[ -z "${1:-}" ]]; then
+    echo "Usage: $(basename "$0") \"<search query>\" [limit]"
+    echo "Example: $(basename "$0") \"arch linux\" 5"
+    exit 1
+fi
+
+# 执行搜索并输出结果 JSON
+fetch_search_results "$@"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+USER="$1"
+
+twitter-media-downloader -C "$HOME/.twmd/twmd_cookies.json" -u "$USER" -o ~/Pictures/x/ -r -i -p socks5://127.0.0.1:7890 -L

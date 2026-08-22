@@ -1,0 +1,6 @@
+# eval "$(oh-my-posh init zsh --config "$XDG_CONFIG_HOME"/oh-my-posh/spaceship.omp.json)"
+eval "$(fnm env --use-on-cd --shell zsh)"
+eval "$(uv generate-shell-completion zsh)"
+eval "$(uvx --generate-shell-completion zsh)"
+eval "$(zoxide init zsh)"
+eval "$(starship init zsh)"

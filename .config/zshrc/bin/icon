@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+hyprctl clients -j | jq -c '.[]' | while read window; do
+    class=$(echo "$window" | jq -r '.class')
+    title=$(echo "$window" | jq -r '.title')
+    address=$(echo "$window" | jq -r '.address')
+
+    icon_path=$(find /usr/share/icons /usr/share/pixmaps ~/.local/share/icons \
+        -name "*${class,,}*" -type f \( -name "*.png" -o -name "*.svg" \) 2>/dev/null | head -1)
+
+    if [ -z "$icon_path" ]; then
+        icon_path=$(gtk-icon-finder "$class" 2>/dev/null | head -1)
+    fi
+
+    echo "窗口: $class"
+    echo "标题: $title"
+    echo "地址: $address"
+    echo "图标: ${icon_path:-未找到}"
+    echo "---"
+done

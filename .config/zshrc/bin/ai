@@ -1,0 +1,549 @@
+#!/usr/bin/env bash
+
+export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=http://127.0.0.1:7890
+
+# Configuration
+CHUTES_API_URL="https://gemini-balance.earlfx.workers.dev/v1/chat/completions"
+CHUTES_API_TOKEN="akirco1258"
+CHUTES_MODEL="gemini-2.5-flash"
+STREAM=false
+SYSTEM_PROMPT="You are a helpful assistant."
+
+# Default settings
+FORMAT="text"
+INTERACTIVE=false
+CONV_DIR="$HOME/Documents/ai_conversations"
+
+ansi_art_lines=(
+    " \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m                                  \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m "
+    "\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▄\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m"
+    " \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m  \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▄\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▄\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m  \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m "
+    " \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m    \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m \e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m█\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m  \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m"
+    "                        \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m \e[38;2;102;187;255m▀\e[0m\e[38;2;102;187;255m▀\e[0m        "
+)
+
+display_ansi_art() {
+    for line in "${ansi_art_lines[@]}"; do
+        echo -e "\t\t$line"
+    done
+}
+
+# Function to show usage
+usage() {
+    local script_name
+    script_name=$(basename "$0")
+    cat <<EOF
+Usage: $script_name [OPTIONS] [MESSAGE]
+
+Chat with AI. If MESSAGE is not provided, reads from stdin.
+
+Options:
+  -s, --system PROMPT    Set system prompt
+  -f, --format FORMAT    Output format: text, json (default: text)
+  -S, --stream           Enable streaming output
+  -i, --interactive      Enter interactive multi-turn mode
+  -h, --help             Show this help message
+
+Interactive mode commands:
+  /quit, /exit           Exit and save conversation
+  /clear                 Clear conversation history
+  /save [filename]       Save conversation to markdown
+
+Examples:
+  $script_name "What is the capital of France?"
+  $script_name -S "Explain quantum computing"
+  echo "Summarize this: ..." | $script_name
+  $script_name -s "You are a coding expert" "How do I write a for loop in Python?"
+  $script_name -i                        # Enter interactive mode
+  $script_name -i -S                     # Interactive mode with streaming
+EOF
+}
+
+
+# Function to handle streaming response (for non-interactive mode)
+handle_stream_response() {
+    local full_content=""
+    local has_error=true
+
+    while IFS= read -r line; do
+        has_error=false
+        line="${line#data: }"
+        if [[ -z "$line" || "$line" == "[DONE]" ]]; then
+            continue
+        fi
+        if content=$(echo "$line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null); then
+            if [[ -n "$content" ]]; then
+                printf "%s" "$content"
+                full_content="${full_content}${content}"
+            fi
+        fi
+    done
+    echo
+
+    if [[ "$has_error" == true ]]; then
+        echo -e "\033[1;31mError: No response received from API\033[0m" >&2
+        return 1
+    fi
+    return 0
+}
+
+# Function to handle non-streaming response (for non-interactive mode)
+handle_non_stream_response() {
+    local response="$1"
+
+    if [[ "$FORMAT" == "json" ]]; then
+        printf '%s\n' "$response"
+        return 0
+    fi
+
+    # ─── Fix #4: 增加 API 错误响应检测 ───
+    local error_msg
+    error_msg=$(echo "$response" | jq -r '.error.message // empty' 2>/dev/null)
+    if [[ -n "$error_msg" ]]; then
+        echo -e "\033[1;31mAPI Error: $error_msg\033[0m" >&2
+        return 1
+    fi
+
+    local content
+    content=$(echo "$response" | jq -r '.choices[0].message.content // empty' 2>/dev/null)
+
+    if [[ -z "$content" ]]; then
+        echo -e "\033[1;31mError: Failed to parse response\033[0m" >&2
+        echo "$response" | jq . 2>/dev/null || printf '%s\n' "$response"
+        return 1
+    fi
+
+    # ─── Fix #7: 使用 printf 替代 echo 避免选项解析问题 ───
+    printf '%s\n' "$content"
+    return 0
+}
+
+# Function to save conversation as markdown
+save_conversation() {
+    local messages="$1"
+    local filename="$2"
+
+    mkdir -p "$CONV_DIR"
+
+    local timestamp
+    timestamp=$(date +"%Y%m%d_%H%M%S")
+
+    if [ -z "$filename" ]; then
+        filename="conversation_${timestamp}.md"
+    else
+        local base="${filename%.md}"
+        filename="${base}_${timestamp}.md"
+    fi
+
+    local filepath="$CONV_DIR/$filename"
+
+    {
+        echo "# AI Conversation"
+        echo ""
+        echo "**Date:** $(date)"
+        echo "**Model:** $CHUTES_MODEL"
+        echo ""
+        echo "---"
+        echo ""
+
+        local count
+        count=$(echo "$messages" | jq length)
+
+        for ((i = 0; i < count; i++)); do
+            local role
+            role=$(echo "$messages" | jq -r ".[$i].role")
+            local content
+            content=$(echo "$messages" | jq -r ".[$i].content")
+
+            local role_label
+            case "$role" in
+            system) role_label="System" ;;
+            user) role_label="You" ;;
+            assistant) role_label="AI" ;;
+            *) role_label="$role" ;;
+            esac
+
+            echo "### $role_label"
+            echo ""
+            # Fix #7: 使用 printf 替代 echo
+            printf '%s\n' "$content"
+            echo ""
+        done
+    } >"$filepath"
+
+    echo -e "\033[1;32mConversation saved to: $filepath\033[0m"
+}
+
+# ─── Fix #6: 终端恢复陷阱 ───
+SAVED_STTY=""
+cleanup_terminal() {
+    if [[ -n "$SAVED_STTY" ]]; then
+        stty "$SAVED_STTY" 2>/dev/null
+        SAVED_STTY=""
+    fi
+}
+trap cleanup_terminal EXIT
+
+# Function for interactive mode
+# Function for interactive mode
+interactive_mode() {
+    STREAM=true
+    local messages
+    messages=$(jq -n --arg content "$SYSTEM_PROMPT" '[{"role": "system", "content": $content}]')
+    local turn=0
+    display_ansi_art
+    echo -e "\033[1;33mType /quit or /exit to leave, /clear to reset, /save [name] to save.\033[0m"
+    echo -e "\033[1;33mType /history to view summary, /debug to inspect API payload.\033[0m"
+    echo
+
+    while true; do
+        turn=$((turn + 1))
+        local ts
+        ts=$(date +"%Y-%m-%d-%H:%M:%S")
+        echo -ne "\033[1;32m${ts} #${turn} ❱ \033[0m"
+
+        local user_input=""
+        local cursor_pos=0
+        local esc_buf=""
+        local old_stty
+        old_stty=$(stty -g)
+        stty -icanon -echo
+
+        while true; do
+            local key=""
+            IFS= read -rsn1 key
+
+            if [[ -n "$esc_buf" ]]; then
+                esc_buf="${esc_buf}${key}"
+                if [[ "$esc_buf" == $'\x1b'[A || "$esc_buf" == $'\x1b'[B ]]; then
+                    esc_buf=""
+                    continue
+                elif [[ "$esc_buf" == $'\x1b'[D ]]; then
+                    if ((cursor_pos > 0)); then
+                        cursor_pos=$((cursor_pos - 1))
+                        echo -ne "\033[1D"
+                    fi
+                    esc_buf=""
+                    continue
+                elif [[ "$esc_buf" == $'\x1b'[C ]]; then
+                    if ((cursor_pos < ${#user_input})); then
+                        cursor_pos=$((cursor_pos + 1))
+                        echo -ne "\033[1C"
+                    fi
+                    esc_buf=""
+                    continue
+                elif [[ "$esc_buf" == $'\x1b'[H || "$esc_buf" == $'\x1b'[1~ ]]; then
+                    if ((cursor_pos > 0)); then
+                        printf "\033[%dD" "$cursor_pos"
+                        cursor_pos=0
+                    fi
+                    esc_buf=""
+                    continue
+                elif [[ "$esc_buf" == $'\x1b'[F || "$esc_buf" == $'\x1b'[4~ ]]; then
+                    if ((cursor_pos < ${#user_input})); then
+                        echo -ne "${user_input:$cursor_pos}"
+                        cursor_pos=${#user_input}
+                    fi
+                    esc_buf=""
+                    continue
+                elif [[ ${#esc_buf} -ge 3 ]]; then
+                    esc_buf=""
+                    continue
+                fi
+                continue
+            fi
+
+            if [[ "$key" == $'\x1b' ]]; then
+                esc_buf=$'\x1b'
+                continue
+            fi
+
+            if [[ "$key" == $'\x0c' ]]; then
+                clear
+                echo
+                turn=$((turn - 1))
+                user_input=""
+                break
+            elif [[ "$key" == $'\x0d' || "$key" == $'\x0a' || -z "$key" ]]; then
+                echo
+                break
+            elif [[ "$key" == $'\x7f' || "$key" == $'\x08' ]]; then
+                if ((cursor_pos > 0)); then
+                    local before="${user_input:0:$((cursor_pos - 1))}"
+                    local after="${user_input:$cursor_pos}"
+                    user_input="${before}${after}"
+                    cursor_pos=$((cursor_pos - 1))
+                    echo -ne "\033[1D\033[K"
+                    if [[ -n "$after" ]]; then
+                        echo -ne "${after}"
+                        printf "\033[%dD" ${#after}
+                    fi
+                fi
+            elif [[ "$key" == $'\x03' ]]; then
+                echo "^C"
+                turn=$((turn - 1))
+                user_input=""
+                break
+            else
+                local before="${user_input:0:$cursor_pos}"
+                local after="${user_input:$cursor_pos}"
+                user_input="${before}${key}${after}"
+                cursor_pos=$((cursor_pos + 1))
+                if [[ -z "$after" ]]; then
+                    echo -n "$key"
+                else
+                    echo -ne "${key}${after}"
+                    printf "\033[%dD" ${#after}
+                fi
+            fi
+        done
+
+        stty "$old_stty"
+
+        if [[ -z "$user_input" ]]; then
+            continue
+        fi
+
+        case "$user_input" in
+        /quit | /exit)
+            echo -e "\033[1;34mGoodbye!\033[0m"
+            save_conversation "$messages" ""
+            break
+            ;;
+        /clear)
+            messages=$(jq -n --arg content "$SYSTEM_PROMPT" '[{"role": "system", "content": $content}]')
+            echo -e "\033[1;33mConversation cleared.\033[0m"
+            continue
+            ;;
+        /save | /save\ *)
+            local save_name="${user_input#/save}"
+            save_name="${save_name# }"
+            save_name=$(echo "$save_name" | xargs)
+            save_conversation "$messages" "$save_name"
+            continue
+            ;;
+        /history)
+            echo -e "\033[1;33m--- Conversation History ---\033[0m"
+            local count
+            count=$(echo "$messages" | jq length)
+            for ((i = 0; i < count; i++)); do
+                local role
+                role=$(echo "$messages" | jq -r ".[$i].role")
+                local content_preview
+                content_preview=$(echo "$messages" | jq -r ".[$i].content" | head -n 1 | cut -c 1-50)
+                echo -e "  \033[1;36m[$role]\033[0m ${content_preview}..."
+            done
+            echo -e "\033[1;33m---------------------------\033[0m"
+            continue
+            ;;
+        /debug)
+            echo -e "\033[1;33m--- Current Messages Payload ---\033[0m"
+            echo "$messages" | jq .
+            echo -e "\033[1;33m-------------------------------\033[0m"
+            continue
+            ;;
+        esac
+
+        messages=$(echo "$messages" | jq --arg content "$user_input" '. + [{"role": "user", "content": $content}]')
+
+        local json_payload
+        json_payload=$(jq -n \
+            --arg model "$CHUTES_MODEL" \
+            --argjson messages "$messages" \
+            --argjson stream "$STREAM" \
+            '{
+                model: $model,
+                messages: $messages,
+                stream: $stream,
+                max_tokens: 4096,
+                temperature: 0.7
+            }')
+
+        echo -ne "\033[1;34m󱚟 ❱ \033[0m"
+
+        if [[ "$STREAM" == true ]]; then
+            if [[ "$FORMAT" == "json" ]]; then
+                curl -s -X POST "${CHUTES_API_URL}" \
+                    -H "Content-Type: application/json" \
+                    -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+                    -H "Accept: text/event-stream" \
+                    -d "$json_payload" \
+                    --no-buffer
+                echo
+            else
+                local full_content=""
+                while IFS= read -r line; do
+                    line="${line#data: }"
+                    if [[ -z "$line" || "$line" == "[DONE]" ]]; then
+                        continue
+                    fi
+                    if content=$(echo "$line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null); then
+                        if [[ -n "$content" ]]; then
+                            printf "%s" "$content"
+                            full_content="${full_content}${content}"
+                        fi
+                    fi
+                done < <(curl -s -X POST "${CHUTES_API_URL}" \
+                    -H "Content-Type: application/json" \
+                    -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+                    -H "Accept: text/event-stream" \
+                    -d "$json_payload" \
+                    --no-buffer)
+                echo
+
+                if [[ -n "$full_content" ]]; then
+                    messages=$(echo "$messages" | jq --arg content "$full_content" '. + [{"role": "assistant", "content": $content}]')
+                else
+                    echo -e "\033[1;31mError: No response received or stream parsing failed\033[0m"
+                    # 修复：不删除用户消息，而是追加错误占位，保持对话交替结构
+                    messages=$(echo "$messages" | jq --arg content "[Error: No response received]" '. + [{"role": "assistant", "content": $content}]')
+                fi
+            fi
+        else
+            local response
+            response=$(curl -s -X POST "${CHUTES_API_URL}" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+                -d "$json_payload")
+
+            if [[ $? -ne 0 ]]; then
+                echo -e "\033[1;31mError: Failed to connect to API\033[0m"
+                messages=$(echo "$messages" | jq --arg content "[Error: Failed to connect to API]" '. + [{"role": "assistant", "content": $content}]')
+                continue
+            fi
+
+            local content
+            content=$(echo "$response" | jq -r '.choices[0].message.content // empty' 2>/dev/null)
+
+            if [[ -z "$content" ]]; then
+                local error_msg
+                error_msg=$(echo "$response" | jq -r '.error.message // empty' 2>/dev/null)
+                if [[ -n "$error_msg" ]]; then
+                    echo -e "\033[1;31mAPI Error: $error_msg\033[0m"
+                else
+                    echo -e "\033[1;31mError: Failed to parse response\033[0m"
+                fi
+                # 修复：追加错误占位
+                messages=$(echo "$messages" | jq --arg content "[Error: Failed to parse response]" '. + [{"role": "assistant", "content": $content}]')
+                continue
+            fi
+
+            printf '%s\n' "$content"
+            messages=$(echo "$messages" | jq --arg content "$content" '. + [{"role": "assistant", "content": $content}]')
+        fi
+
+        echo
+    done
+}
+
+# Parse command line arguments
+TEXT=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    -s | --system)
+        SYSTEM_PROMPT="$2"
+        shift 2
+        ;;
+    -f | --format)
+        FORMAT="$2"
+        shift 2
+        ;;
+    -S | --stream)
+        STREAM=true
+        shift
+        ;;
+    -i | --interactive)
+        INTERACTIVE=true
+        shift
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    -*)
+        echo "Unknown option: $1"
+        usage
+        exit 1
+        ;;
+    *)
+        if [ -z "$TEXT" ]; then
+            TEXT="$1"
+        else
+            TEXT="$TEXT $1"
+        fi
+        shift
+        ;;
+    esac
+done
+
+# Enter interactive mode
+if [[ "$INTERACTIVE" == true ]]; then
+    interactive_mode
+    exit 0
+fi
+
+# If no text provided as argument, read from stdin
+if [ -z "$TEXT" ]; then
+    if [ -t 0 ]; then
+        echo -e "\033[1;33mNo message provided. Please provide a message as an argument or via stdin.\033[0m"
+        echo
+        usage
+        exit 1
+    else
+        TEXT=$(cat)
+        if [ -z "$TEXT" ]; then
+            echo -e "\033[1;33mNo message provided via stdin.\033[0m"
+            exit 1
+        fi
+    fi
+fi
+
+# ─── Fix #2: 使用 jq 安全构建 JSON ───
+JSON_PAYLOAD=$(jq -n \
+    --arg model "$CHUTES_MODEL" \
+    --arg system "$SYSTEM_PROMPT" \
+    --arg user "$TEXT" \
+    --argjson stream "$STREAM" \
+    '{
+        model: $model,
+        messages: [
+            {"role": "system", "content": $system},
+            {"role": "user", "content": $user}
+        ],
+        stream: $stream,
+        max_tokens: 4096,
+        temperature: 0.7
+    }')
+
+# Make API call
+if [[ "$STREAM" == true ]]; then
+    if [[ "$FORMAT" == "json" ]]; then
+        curl -s -X POST "${CHUTES_API_URL}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+            -H "Accept: text/event-stream" \
+            -d "$JSON_PAYLOAD" \
+            --no-buffer
+    else
+        # ─── Fix #3: 直接管道传递流式输出，而非先捕获到变量 ───
+        curl -s -X POST "${CHUTES_API_URL}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+            -H "Accept: text/event-stream" \
+            -d "$JSON_PAYLOAD" \
+            --no-buffer | handle_stream_response
+    fi
+else
+    RESPONSE=$(curl -s -X POST "${CHUTES_API_URL}" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${CHUTES_API_TOKEN}" \
+        -d "$JSON_PAYLOAD")
+
+    # ─── Fix #4 & #9: 更健壮的错误检查 ───
+    if [[ $? -ne 0 ]]; then
+        echo -e "\033[1;31mError: Failed to connect to API\033[0m" >&2
+        exit 1
+    fi
+
+    handle_non_stream_response "$RESPONSE"
+fi

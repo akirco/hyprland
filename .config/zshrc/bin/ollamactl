@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+OSF="/run/user/$(id -u)/ollama_status"
+
+
+function check_dependencies {
+    local missing_deps=()
+    for dep in ollama fzf; do
+        if ! command -v "$dep" &>/dev/null; then
+            missing_deps+=("$dep")
+        fi
+    done
+
+    if [[ ${#missing_deps[@]} -ne 0 ]]; then
+        echo "Error: Missing required dependencies: ${missing_deps[*]}"
+        exit 1
+    fi
+}
+
+function toggle {
+    OLLAMA_PID="$(pgrep -xf 'ollama serve')"
+    if ! [[ -z "$OLLAMA_PID" ]]; then
+      kill "$OLLAMA_PID" && rm "$OSF"
+    else
+      touch "$OSF"
+      (ollama serve) &
+      disown
+      exit
+    fi
+}
+
+function turn_on {
+  OLLAMA_PID="$(pgrep -xf 'ollama serve')"
+  if [[ -z "$OLLAMA_PID" ]]; then
+    touch "$OSF"
+    (ollama serve) &
+    disown
+  fi
+}
+
+function turn_off {
+  OLLAMA_PID="$(pgrep -xf 'ollama serve')"
+  if ! [[ -z "$OLLAMA_PID" ]]; then
+    kill "$OLLAMA_PID" && rm "$OSF"
+  fi
+}
+
+function server_status {
+  OLLAMA_PID="$(pgrep -xf 'ollama serve')"
+  if [[ -z "$OLLAMA_PID" ]]; then
+    echo '{"text":"Disconnected","class":"disconnected","alt":"disconnected"}'
+  else
+    echo '{"text":"Connected","class":"connected","alt":"connected"}'
+  fi
+}
+
+check_dependencies
+
+case "$1" in
+  -s|--status)
+    server_status
+    ;;
+  -t|--toggle)
+    toggle
+    ;;
+  -c|--chat)
+    turn_on
+    MODELS=$(ollama list | tail -n +2 | awk '{print $1}')
+    ollama run "$(echo "$MODELS" | fzf)" 2>/dev/null
+    ;;
+  *) echo "Usage: $(basename "$0") [-s|--status] [-t|--toggle] [-c|--chat]"
+     exit 1
+  ;;
+esac
+

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+SHADER_DIR="${HOME}/.config/hypr/shaders"
+DEFAULT_SHADER_NAME="blue-light-filter.glsl"
+
+CURRENT_SHADER=$(hyprctl getoption decoration:screen_shader | grep "str:" | awk '{print $2}' | tr -d '"')
+
+case "$1" in
+on)
+  TARGET_NAME="${2:-$DEFAULT_SHADER_NAME}"
+
+  if [[ "$TARGET_NAME" != *.glsl ]]; then
+    TARGET_NAME="${TARGET_NAME}.glsl"
+  fi
+
+  TARGET_PATH="${SHADER_DIR}/${TARGET_NAME}"
+
+  if [ -f "$TARGET_PATH" ]; then
+    hyprctl keyword decoration:screen_shader "$TARGET_PATH"
+    echo "已开启着色器: $TARGET_NAME"
+  else
+    echo "错误: 在 $SHADER_DIR 中找不到着色器文件 $TARGET_NAME"
+    exit 1
+  fi
+  ;;
+off)
+  hyprctl keyword decoration:screen_shader ""
+  echo "已关闭着色器"
+  ;;
+list | ls)
+  if [ -d "$SHADER_DIR" ]; then
+    find "$SHADER_DIR" -maxdepth 1 -name "*.glsl" -exec basename {} \;
+  else
+    echo "错误: 找不到目录 $SHADER_DIR"
+  fi
+  ;;
+random)
+  if [ -d "$SHADER_DIR" ] && [ "$(find "$SHADER_DIR" -maxdepth 1 -name "*.glsl" | wc -l)" -gt 0 ]; then
+    RANDOM_SHADER=$(find "$SHADER_DIR" -maxdepth 1 -name "*.glsl" | shuf -n 1)
+    hyprctl keyword decoration:screen_shader "$RANDOM_SHADER"
+    echo "已随机切换至: $(basename "$RANDOM_SHADER")"
+  else
+    echo "错误: $SHADER_DIR 目录不存在或没有 .glsl 文件"
+  fi
+  ;;
+toggle | *)
+  if [ -n "$CURRENT_SHADER" ] && [ "$CURRENT_SHADER" != "none" ]; then
+    hyprctl keyword decoration:screen_shader ""
+    echo "已关闭着色器"
+  else
+    hyprctl keyword decoration:screen_shader "${SHADER_DIR}/${DEFAULT_SHADER_NAME}"
+    echo "已开启默认着色器: $DEFAULT_SHADER_NAME"
+  fi
+  ;;
+esac

@@ -1,0 +1,214 @@
+#!/usr/bin/env bun
+
+async function convertToMarkdown(url: string) {
+  const response = await fetch(url);
+  const baseUrl = new URL(url);
+
+  // 辅助函数：将相对路径转为绝对路径
+  const resolveUrl = (href: string | null) => {
+    if (!href) return "";
+    try {
+      return new URL(href, baseUrl).href;
+    } catch {
+      return href;
+    }
+  };
+
+  // 建立图片占位符字典（核心修复点）
+  const imageMap = new Map<string, string>();
+  let imageCounter = 0;
+
+  const rewriter = new HTMLRewriter()
+    // 1. 强力剔除无用元素
+    .on(
+      `
+      script, style, head, nav, footer, header, aside, iframe, svg, noscript, meta, link, button, form, dialog, template,
+      .sr-only, [hidden], [role="navigation"], [role="banner"], [role="contentinfo"],
+      .AppHeader, #repository-container-header, .file-navigation,
+      [data-testid="repo-file-list"], .react-directory-row, .Layout-sidebar,
+      .commit-loader, a[href="#start-of-content"]
+    `,
+      {
+        element(el) {
+          el.remove();
+        },
+      },
+    )
+
+    // 2. 处理标题
+    .on("h1, h2, h3, h4, h5, h6", {
+      element(el) {
+        const level = parseInt(el.tagName.substring(1));
+        el.before(`\n\n${"#".repeat(level)} `, { html: true });
+        el.after("\n\n", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 3. 处理段落
+    .on("p", {
+      element(el) {
+        el.before("\n\n", { html: true });
+        el.after("\n\n", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 4. 处理换行
+    .on("br", {
+      element(el) {
+        el.replace("\n", { html: true });
+      },
+    })
+
+    // 5. 处理链接 <a href="...">
+    .on("a[href]", {
+      element(el) {
+        const href = resolveUrl(el.getAttribute("href"));
+        el.before("[", { html: true });
+        el.after(`](${href})`, { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 6. 处理图片 <img>（使用占位符隔离）
+    .on("img", {
+      element(el) {
+        const src = resolveUrl(el.getAttribute("src"));
+        // 过滤 alt 文本中的括号，防止破坏 markdown 语法
+        const alt = (el.getAttribute("alt") ?? "image").replace(/\[|\]/g, "");
+
+        // 生成占位符，例如 __BUN_MD_IMG_0__
+        const placeholder = `__BUN_MD_IMG_${imageCounter++}__`;
+        imageMap.set(placeholder, `![${alt}](${src})`);
+
+        // 暂时用占位符替换图片
+        el.replace(placeholder, { html: true });
+      },
+    })
+
+    // 7. 处理加粗
+    .on("strong, b", {
+      element(el) {
+        el.before("**", { html: true });
+        el.after("**", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 8. 处理斜体
+    .on("em, i", {
+      element(el) {
+        el.before("_", { html: true });
+        el.after("_", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 9. 处理行内代码 <code>
+    .on("code", {
+      element(el) {
+        el.before("`", { html: true });
+        el.after("`", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 10. 处理代码块 <pre>
+    .on("pre", {
+      element(el) {
+        el.before("\n```\n", { html: true });
+        el.after("\n```\n", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 11. 处理列表
+    .on("ul, ol", {
+      element(el) {
+        el.before("\n", { html: true });
+        el.after("\n", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+    .on("li", {
+      element(el) {
+        el.before("\n- ", { html: true });
+        el.removeAndKeepContent();
+      },
+    })
+
+    // 12. 处理块级元素
+    .on("div, section, article, main", {
+      element(el) {
+        el.before("\n", { html: true });
+        el.after("\n", { html: true });
+        el.removeAndKeepContent();
+      },
+    });
+
+  const processedResponse = rewriter.transform(response);
+  const htmlText = await processedResponse.text();
+
+  // ----------------------------------------------------
+  // 高级后处理：清理空节点和无意义的换行空白
+  // ----------------------------------------------------
+  let markdown = htmlText
+    .replace(/<[^>]+>/g, "") // 移除残留的 HTML 标签
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  // 【核心修复】由于图片已被转为安全占位符，正则可以肆无忌惮地清理链接内部的所有换行和多余空格了
+  markdown = markdown.replace(
+    /\[([^\]]*)\]\(([^)]+)\)/g,
+    (match, text, url) => {
+      // 强制将内部所有换行和连续空白压缩为一个空格
+      const cleanText = text.replace(/\s+/g, " ").trim();
+      return cleanText ? `[${cleanText}](${url})` : "";
+    },
+  );
+
+  // 恢复图片占位符为真实的 Markdown 语法
+  for (const [placeholder, imgMarkdown] of imageMap.entries()) {
+    markdown = markdown.replaceAll(placeholder, imgMarkdown);
+  }
+
+  // 扫尾工作
+  markdown = markdown
+    .replace(/^#+\s*$/gm, "") // 清除空标题
+    .replace(/^-\s*$/gm, "") // 清除空列表项
+    .replace(/\*\*\s*\*\*/g, "") // 清除空的加粗
+    .replace(/_\s*_/g, "") // 清除空的斜体
+    .replace(/```\n`/g, "```\n")
+    .replace(/`\n```/g, "\n```")
+    .replace(/````/g, "```")
+    .replace(/[ \t]+$/gm, "") // 清理行尾空格
+    .replace(/\n{3,}/g, "\n\n") // 限制最大连续换行数为2
+    .trim();
+
+  return markdown;
+}
+
+// ----------------------------------------------------
+// CLI 入口
+// ----------------------------------------------------
+
+const url = process.argv[2];
+const cli = process.argv[1];
+
+if (!url || url == "-h" || url == "--help") {
+  console.info(`Usage: bun run ${cli} <url>`);
+  process.exit(1);
+}
+
+try {
+  const markdown = await convertToMarkdown(url);
+  console.log(markdown);
+} catch (error) {
+  console.error("Error:", error);
+  process.exit(1);
+}

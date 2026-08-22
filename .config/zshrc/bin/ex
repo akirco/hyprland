@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+
+# 定义帮助信息
+usage() {
+    echo "Usage: $(basename "$0") [-r] <source> [target]"
+    echo "Options:"
+    echo "  -r    Operation successful -> Remove original file or directory"
+    echo ""
+    echo "Modes:"
+    echo "  [Extraction] If <source> is a FILE:"
+    echo "      $(basename "$0") archive.zip /tmp/dest   # 解压到指定目录"
+    echo "      $(basename "$0") -r archive.tar.gz       # 解压到当前目录并删除原压缩包"
+    echo ""
+    echo "  [Compression] If <source> is a DIRECTORY:"
+    echo "      $(basename "$0") my_folder my_folder.zip # 将文件夹压缩为 zip"
+    echo "      $(basename "$0") -r my_folder dest.tar.gz# 压缩为 tar.gz 并删除原文件夹"
+    exit 1
+}
+
+# 1. 解析可选参数 -r
+REMOVE_SOURCE=0
+while getopts "r" opt; do
+    case "$opt" in
+    r) REMOVE_SOURCE=1 ;;
+    *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+# 检查参数数量
+if [ $# -lt 1 ]; then
+    usage
+fi
+
+# 移除路径末尾的斜杠（比如将 my_folder/ 变成 my_folder），防止后续拼接出错
+SRC="${1%/}"
+TARGET="$2"
+
+if [ -z "$SRC" ]; then
+    SRC="/" # 如果用户输入的是纯根目录 "/"，去掉斜杠后会变空，这里补回
+fi
+
+# ==========================================
+# 模式 A: 提取（解压）模式 - 当源是【文件】时
+# ==========================================
+if [ -f "$SRC" ]; then
+    EXTRACT_TO=""
+    if [ -n "$TARGET" ]; then
+        if [ ! -d "$TARGET" ]; then
+            mkdir -p "$TARGET" || {
+                echo "Error: failed to create directory '$TARGET'"
+                exit 1
+            }
+        fi
+        EXTRACT_TO="$TARGET"
+    fi
+
+    BASENAME=$(basename "$SRC")
+
+    # 执行解压
+    case "$SRC" in
+    *.tar.bz2 | *.tar.gz | *.tar.xz | *.tar.zst | *.tar | *.tbz2 | *.tgz)
+        if [ -n "$EXTRACT_TO" ]; then tar xf "$SRC" -C "$EXTRACT_TO"; else tar xf "$SRC"; fi
+        ;;
+    *.zip)
+        if [ -n "$EXTRACT_TO" ]; then unzip -q "$SRC" -d "$EXTRACT_TO"; else unzip -q "$SRC"; fi
+        ;;
+    *.rar)
+        if [ -n "$EXTRACT_TO" ]; then unrar x "$SRC" "$EXTRACT_TO/"; else unrar x "$SRC"; fi
+        ;;
+    *.7z)
+        if [ -n "$EXTRACT_TO" ]; then 7z x "$SRC" -o"$EXTRACT_TO"; else 7z x "$SRC"; fi
+        ;;
+    *.deb)
+        if [ -n "$EXTRACT_TO" ]; then ar x "$SRC" --output="$EXTRACT_TO"; else ar x "$SRC"; fi
+        ;;
+    *.bz2)
+        if [ -n "$EXTRACT_TO" ]; then bunzip2 -c "$SRC" >"$EXTRACT_TO/${BASENAME%.bz2}"; else bunzip2 "$SRC"; fi
+        ;;
+    *.gz)
+        if [ -n "$EXTRACT_TO" ]; then gunzip -c "$SRC" >"$EXTRACT_TO/${BASENAME%.gz}"; else gunzip "$SRC"; fi
+        ;;
+    *.Z)
+        if [ -n "$EXTRACT_TO" ]; then uncompress -c "$SRC" >"$EXTRACT_TO/${BASENAME%.Z}"; else uncompress "$SRC"; fi
+        ;;
+    *)
+        echo "Error: '$SRC' format is not supported for extraction."
+        exit 1
+        ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo "Successfully extracted '$SRC'"
+        if [ "$REMOVE_SOURCE" -eq 1 ]; then
+            rm -f "$SRC"
+            echo "Removed original archive: '$SRC'"
+        fi
+        exit 0
+    else
+        echo "Error: Failed to extract '$SRC'."
+        exit 1
+    fi
+
+# ==========================================
+# 模式 B: 归档（压缩）模式 - 当源是【文件夹】时
+# ==========================================
+elif [ -d "$SRC" ]; then
+    # 如果没有指定目标压缩包名称，则自动生成一个同名的 .tar.gz
+    if [ -z "$TARGET" ]; then
+        TARGET="${SRC}.tar.gz"
+        echo "No target specified. Defaulting to: $TARGET"
+    fi
+
+    # 执行压缩（根据目标文件的后缀名判断压缩格式）
+    case "$TARGET" in
+    *.tar.gz | *.tgz) tar czf "$TARGET" "$SRC" ;;
+    *.tar.bz2 | *.tbz2) tar cjf "$TARGET" "$SRC" ;;
+    *.tar.xz) tar cJf "$TARGET" "$SRC" ;;
+    *.tar.zst) tar --zstd -cf "$TARGET" "$SRC" ;;
+    *.tar) tar cf "$TARGET" "$SRC" ;;
+    *.zip) zip -qr "$TARGET" "$SRC" ;;
+    *.7z) 7z a "$TARGET" "$SRC" ;;
+    *.rar) rar a "$TARGET" "$SRC" ;; # 注: 需安装非开源版 rar 工具
+    *)
+        echo "Error: Unsupported compression format for target '$TARGET'."
+        exit 1
+        ;;
+    esac
+
+    # 校验压缩结果
+    if [ $? -eq 0 ]; then
+        echo "Successfully compressed '$SRC' into '$TARGET'"
+
+        # 危险操作预检：如果指定了 -r，在删除前进行安全白名单校验
+        if [ "$REMOVE_SOURCE" -eq 1 ]; then
+            if [ "$SRC" = "/" ] || [ "$SRC" = "." ] || [ "$SRC" = ".." ] || [ "$SRC" = "~" ]; then
+                echo "CRITICAL WARNING: Refusing to remove root or system reserved directories!"
+                exit 1
+            fi
+
+            rm -rf "$SRC"
+            echo "Removed original directory: '$SRC'"
+        fi
+        exit 0
+    else
+        echo "Error: Failed to compress '$SRC'. Original directory is kept."
+        exit 1
+    fi
+
+# ==========================================
+# 错误处理: 既不是文件也不是文件夹
+# ==========================================
+else
+    echo "Error: '$SRC' is not a valid file or directory."
+    exit 1
+fi

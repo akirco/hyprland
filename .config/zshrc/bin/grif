@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+# ==================== 配置区域 ====================
+SAVE_DIR="$HOME/Pictures/Gifs"
+FPS=15
+WIDTH=720
+# ================================================
+
+set -e
+
+check_deps() {
+    local deps=(slurp wf-recorder ffmpeg notify-send)
+    for cmd in "${deps[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo "错误: 未找到命令 '$cmd'，请先安装。" >&2
+            exit 1
+        fi
+    done
+}
+
+cleanup() {
+    if [ -f "$TMP_VIDEO" ]; then
+        echo "清理临时文件..."
+        rm -f "$TMP_VIDEO"
+    fi
+}
+
+check_deps
+trap cleanup EXIT
+
+mkdir -p "$SAVE_DIR"
+
+FILE_NAME="gif_$(date +%Y%m%d_%H%M%S).gif"
+DEST_PATH="$SAVE_DIR/$FILE_NAME"
+
+echo "请选择录制区域..."
+GEOM=$(slurp)
+
+if [ -z "$GEOM" ]; then
+    echo "取消选择，退出脚本。"
+    exit 0
+fi
+
+TMP_VIDEO=$(mktemp --suffix=.mp4 -u)
+
+# 开始录制
+echo "正在录制区域: $GEOM"
+echo "按 Ctrl+C 停止录制..."
+notify-send "录屏开始" "区域: $GEOM" --icon=media-record
+
+set +e
+wf-recorder -g "$GEOM" -f "$TMP_VIDEO"
+set -e
+
+# 检查视频文件是否有效
+if [ ! -s "$TMP_VIDEO" ]; then
+    echo "录制失败或文件为空。" >&2
+    notify-send "录屏失败" "未生成视频数据" --icon=dialog-error
+    exit 1
+fi
+
+echo "正在生成 GIF (可能需要一些时间)..."
+notify-send "处理中" "正在生成 GIF..." --icon=document-save
+
+# 【优化点】直接判断 ffmpeg 命令是否成功，而非使用 $?
+if ffmpeg -y -loglevel warning -i "$TMP_VIDEO" \
+    -vf "fps=${FPS},scale=${WIDTH}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+    "$DEST_PATH" && [ -f "$DEST_PATH" ]; then
+
+    echo "成功保存至: $DEST_PATH"
+    notify-send "录屏完成" "已保存至: $DEST_PATH" --icon=image-gif
+else
+    echo "转换失败" >&2
+    notify-send "录屏失败" "GIF 生成错误" --icon=dialog-error
+    exit 1
+fi

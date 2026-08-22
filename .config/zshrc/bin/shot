@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+OUTPUT_DIR="${HOME}/window_thumbnails/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$OUTPUT_DIR"
+
+WORKSPACES=$(hyprctl workspaces -j | jq -r '.[] | .id')
+
+TEMP_DIR=$(mktemp -d)
+
+capture_workspace_windows() {
+    local workspace_id=$1
+    echo "正在截取工作空间 $workspace_id 的窗口..."
+    
+    hyprctl dispatch workspace "$workspace_id"
+    sleep 2s
+    
+    hyprctl clients -j | jq -c ".[] | select(.workspace.id == $workspace_id)" | while read -r window; do
+        pid=$(echo "$window" | jq -r '.pid')
+        class=$(echo "$window" | jq -r '.class')
+        title=$(echo "$window" | jq -r '.title' | sed 's/[^a-zA-Z0-9]/_/g')
+        x=$(echo "$window" | jq -r '.at[0]')
+        y=$(echo "$window" | jq -r '.at[1]')
+        width=$(echo "$window" | jq -r '.size[0]')
+        height=$(echo "$window" | jq -r '.size[1]')
+        
+        if [ "$width" -gt 0 ] && [ "$height" -gt 0 ]; then
+            filename="${OUTPUT_DIR}/${workspace_id}_${class}_${pid}_${title}.png"
+            grim -g "${x},${y} ${width}x${height}" "$filename"
+            echo "已保存: $filename"
+        fi
+    done
+}
+
+CURRENT_WORKSPACE=$(hyprctl activeworkspace -j | jq -r '.id')
+
+for ws in $WORKSPACES; do
+    capture_workspace_windows "$ws"
+done
+
+hyprctl dispatch workspace "$CURRENT_WORKSPACE"
+
+rm -rf "$TEMP_DIR"
+
+echo "所有工作空间的窗口缩略图已保存到: $OUTPUT_DIR"

@@ -1,0 +1,305 @@
+#!/bin/bash
+
+# 强制使用英文环境，防止 pacman 输出本地化语言导致 grep 解析失败
+export LC_ALL=C
+
+# 列出所有显式安装的包及其可执行程序、依赖和配置文件位置
+list_packages_info() {
+    echo "=== 可执行程序及其依赖关系、配置文件查询 ==="
+    echo "生成时间: $(date)"
+    echo ""
+
+    # 检查是否以root运行，并确定实际用户的家目录
+    local user_home="$HOME"
+    if [[ -n "$SUDO_USER" ]]; then
+        user_home=$(eval echo "~$SUDO_USER")
+        echo "注意: 检测到使用 sudo 运行，将查找用户 '$SUDO_USER' 的配置文件 ($user_home)" >&2
+    fi
+
+    # 获取所有显式安装的包
+    echo "正在获取包列表..." >&2
+    local explicit_packages
+    explicit_packages=$(pacman -Qe | awk '{print $1}')
+    local total
+    total=$(echo "$explicit_packages" | wc -l)
+    local count=0
+
+    echo "找到 $total 个显式安装的包" >&2
+    echo "" >&2
+
+    # 遍历每个包
+    for pkg in $explicit_packages; do
+        ((count++))
+        # 进度信息输出到 stderr，这样生成报告时不会写入文件
+        echo "处理进度: $count/$total - $pkg" >&2
+
+        # 获取包的详细信息
+        local pkg_info
+        pkg_info=$(pacman -Qi "$pkg" 2>/dev/null)
+
+        if [[ -z "$pkg_info" ]]; then
+            echo "  警告: 包 '$pkg' 不存在或已损坏" >&2
+            continue
+        fi
+
+        # 提取包的描述
+        local description
+        description=$(echo "$pkg_info" | awk -F': ' '/^Description/ {print $2}')
+
+        # 优化：一次性获取包的所有文件列表，避免多次调用 pacman -Ql
+        local pkg_files
+        pkg_files=$(pacman -Ql "$pkg" 2>/dev/null | awk '{print $2}')
+
+        # 获取包提供的可执行文件 (使用缓存的文件列表)
+        local executables
+        executables=$(echo "$pkg_files" |
+                     grep -E "^(/usr/bin/|^/bin/|^/usr/sbin/|^/sbin/|^/usr/local/bin/|^/usr/games/|^/opt/)" |
+                     xargs -I{} basename {} 2>/dev/null |
+                     sort -u)
+
+        local exe_display
+        if [[ -z "$executables" ]]; then
+            exe_display="无"
+        else
+            exe_display="$executables"
+        fi
+
+        echo "## $pkg"
+        echo "描述: $description"
+
+        # 显示可执行程序
+        echo "可执行程序:"
+        if [[ $(echo "$exe_display" | wc -l) -gt 10 ]]; then
+            echo "$exe_display" | head -5 | sed 's/^/  - /'
+            echo "  ... (共 $(echo "$exe_display" | wc -l) 个，已省略)"
+        else
+            echo "$exe_display" | sed 's/^/  - /'
+        fi
+
+        # 获取依赖 (修复多行依赖解析问题)
+        local dependencies
+        dependencies=$(echo "$pkg_info" | awk '
+            /^Depends On/ { in_deps=1; sub(/^Depends On[[:space:]]*:[[:space:]]*/, ""); print; next }
+            in_deps && /^[[:space:]]+/ { print; next }
+            in_deps && /^[^[:space:]]/ { exit }
+        ' | tr '\n' ' ' | sed 's/  /\n/g' | sed '/^[[:space:]]*$/d')
+
+        echo "依赖包:"
+        if [[ -n "$dependencies" ]]; then
+            echo "$dependencies" | sed 's/^/  - /'
+        else
+            echo "  - 无"
+        fi
+
+        # 获取配置文件（主要在 /etc 目录下）
+        local config_files
+        config_files=$(echo "$pkg_files" | grep -E "^/etc/")
+
+        # 查找用户配置文件
+        local user_config_patterns
+        user_config_patterns=(
+            ".config/$pkg"
+            ".$pkg"
+            # 尝试去除版本号后缀的常见模式
+            ".config/$(echo "$pkg" | sed 's/-[0-9].*//; s/-git$//; s/-svn$//')"
+        )
+
+        local user_configs=""
+        local pattern
+        for pattern in "${user_config_patterns[@]}"; do
+            if [[ -d "$user_home/$pattern" ]]; then
+                 user_configs="$user_configs$user_home/$pattern\n"
+            elif compgen -G "$user_home/$pattern*" > /dev/null 2>&1; then
+                local found_files
+                found_files=$(find "$user_home" -maxdepth 3 -path "*$pattern*" -type f 2>/dev/null)
+                if [[ -n "$found_files" ]]; then
+                    user_configs="$user_configs$found_files\n"
+                fi
+            fi
+        done
+
+        echo "配置文件位置:"
+        if [[ -n "$config_files" ]]; then
+            echo "  [系统配置]:"
+            echo "$config_files" | sed 's/^/    - /'
+        fi
+
+        if [[ -n "$user_configs" ]]; then
+            echo "  [用户配置]:"
+            echo -e "$user_configs" | sed '/^$/d' | sed "s|^$user_home/|~/|" | sed 's/^/    - /'
+        fi
+
+        if [[ -z "$config_files" && -z "$user_configs" ]]; then
+            echo "  未找到已知配置文件"
+        fi
+
+        # 查找 PKGBUILD
+        find_pkgbuild "$pkg"
+
+        echo ""
+        echo "---"
+        echo ""
+    done
+}
+
+# 查找 PKGBUILD
+find_pkgbuild() {
+    local pkg=$1
+    local pkgbuild_dir=""
+
+    local cache_dirs=(
+        "$HOME/.cache/yay/$pkg"
+        "$HOME/.cache/paru/clone/$pkg"
+        "/tmp/yay-$USER/$pkg"
+        "$(eval echo ~$SUDO_USER)/.cache/yay/$pkg"
+        "$(eval echo ~$SUDO_USER)/.cache/paru/clone/$pkg"
+    )
+
+    for dir in "${cache_dirs[@]}"; do
+        if [[ -f "$dir/PKGBUILD" ]]; then
+            pkgbuild_dir="$dir"
+            break
+        fi
+    done
+
+    if [[ -n "$pkgbuild_dir" ]]; then
+        echo "PKGBUILD 位置: $pkgbuild_dir/PKGBUILD"
+    elif pacman -Si "$pkg" &>/dev/null; then
+        echo "PKGBUILD 提示: 官方仓库包，可使用 'asp export $pkg' 获取"
+    else
+        echo "PKGBUILD 提示: AUR 包，缓存中未找到。可使用 'yay -G $pkg' 下载"
+    fi
+}
+
+# 生成报告文件
+generate_report() {
+    local output_file
+    output_file="package_report_$(date +%Y%m%d_%H%M%S).txt"
+    echo "正在生成报告..."
+    list_packages_info > "$output_file"
+    echo "报告已生成: $output_file ($(du -h "$output_file" | cut -f1))"
+}
+
+# 核心功能：只列出所有可执行程序（带路径）
+list_executables_only() {
+    echo "正在查询所有显式安装包的可执行程序..." >&2
+
+    # 1. 获取所有显式安装的包名
+    local packages
+    packages=$(pacman -Qeq)
+
+    # 2. 批量查询文件列表 (xargs pacman -Ql 速度远快于循环调用)
+    # 3. 筛选路径: 过滤掉目录(以/结尾)，只保留 bin sbin 路径
+    # 4. 输出格式: 包名: 路径
+
+    # 注意：这里必须使用 printf '%s\n' 来处理可能包含特殊字符的包名列表
+    # 且 grep 和 awk 的处理需保证数据流格式正确
+    printf '%s\n' "$packages" | xargs pacman -Ql 2>/dev/null | \
+        grep -vE '/$' | \
+        awk '/\/(usr\/)?s?bin\// {print $1 ": " $2}'
+}
+
+# 交互式菜单
+show_menu() {
+    echo "请选择操作:"
+    echo "1) 生成完整报告 (保存到文件)"
+    echo "2) 只查看特定包的信息"
+    echo "3) 列出所有可执行程序及路径 (屏幕输出)"
+    echo "4) 查找孤立包"
+    echo "5) 退出"
+    echo ""
+    # 使用 read -r 防止转义字符被处理
+    read -r -p "选择 [1-5]: " choice
+
+    case $choice in
+        1)
+            generate_report
+            ;;
+        2)
+            read -r -p "请输入包名: " pkg_name
+            if pacman -Q "$pkg_name" &>/dev/null; then
+                echo ""
+                pacman -Qi "$pkg_name"
+                echo ""
+                echo "=== 可执行文件 ==="
+                pacman -Ql "$pkg_name" | grep -E '/(usr/)?s?bin/' | awk '{print $2}'
+            else
+                echo "错误: 包 '$pkg_name' 未安装"
+            fi
+            ;;
+        3)
+            list_executables_only
+            ;;
+        4)
+            echo "正在查找孤立包..."
+            local orphaned
+            orphaned=$(pacman -Qdtq)
+            if [[ -n "$orphaned" ]]; then
+                echo "找到以下孤立包:"
+                echo "$orphaned"
+                read -r -p "是否删除? (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    # shellcheck disable=SC2046
+                    # 此处我们希望 pacman 接收展开后的参数列表
+                    sudo pacman -Rns $(pacman -Qdtq)
+                fi
+            else
+                echo "未找到孤立包"
+            fi
+            ;;
+        5) exit 0 ;;
+        *) echo "无效选择" ;;
+    esac
+}
+
+# 主函数
+main() {
+    if ! command -v pacman &> /dev/null; then
+        echo "错误: 此脚本只能在 Arch Linux 或衍生版上运行" >&2
+        exit 1
+    fi
+
+    if [[ $# -eq 1 ]]; then
+        case $1 in
+            "--help"|"-h")
+                echo "用法: $0 [选项]"
+                echo "选项:"
+                echo "  --help, -h     显示帮助"
+                echo "  --report, -r   生成完整报告文件"
+                echo "  --list, -l     快速列出所有可执行程序及路径"
+                echo "  --pkg <包名>   查看特定包信息"
+                echo "  --orphans      查找孤立包"
+                exit 0
+                ;;
+            "--report"|"-r")
+                generate_report
+                ;;
+            "--list"|"-l")
+                list_executables_only
+                ;;
+            "--orphans")
+                pacman -Qdtq
+                ;;
+            *)
+                echo "未知参数: $1"
+                exit 1
+                ;;
+        esac
+    elif [[ $# -eq 2 && "$1" == "--pkg" ]]; then
+        local pkg_name=$2
+        if pacman -Q "$pkg_name" &>/dev/null; then
+            pacman -Qi "$pkg_name"
+            echo -e "\n=== 可执行文件 ==="
+            pacman -Ql "$pkg_name" 2>/dev/null | grep -E '/(usr/)?s?bin/' | awk '{print $2}'
+        else
+            echo "错误: 包 '$pkg_name' 未安装" >&2
+            exit 1
+        fi
+        exit 0
+    fi
+
+    show_menu
+}
+
+main "$@"

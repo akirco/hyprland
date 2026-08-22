@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+
+/**
+ * Converts Unix timestamp to readable date string
+ * @param {string|number} timestamp - Unix timestamp
+ * @returns {string} Formatted date string
+ */
+function formatDate(timestamp) {
+    if (!timestamp) return 'Unknown Date';
+
+    // Convert to number if it's a string
+    const ts = Number(timestamp);
+
+    // Check if conversion was successful
+    if (isNaN(ts) || ts <= 0) return 'Invalid Date';
+
+    const date = new Date(ts * 1000); // Unix timestamp is in seconds
+    return date.toLocaleString();
+}
+
+/**
+ * Extracts bookmarks from HTML content
+ * @param {string} htmlContent - Raw HTML content of the bookmark file
+ * @returns {Array} Array of bookmark objects with date, url, and title
+ */
+function extractBookmarks(htmlContent) {
+    // Regular expression to match bookmark entries
+    // Matches: <DT><A HREF="url" ADD_DATE="timestamp">title</A>
+    const bookmarkRegex = /<DT>\s*<A\s+[^>]*HREF\s*=\s*["']([^"']*)["'][^>]*ADD_DATE\s*=\s*["'](\d+)["'][^>]*>(.*?)<\/A>/gi;
+
+    const bookmarks = [];
+    let match;
+
+    while ((match = bookmarkRegex.exec(htmlContent)) !== null) {
+        const url = match[1];
+        const timestamp = match[2];
+        const title = match[3];
+
+        bookmarks.push({
+            date: formatDate(timestamp),
+            url: url,
+            title: title
+        });
+    }
+
+    return bookmarks;
+}
+
+/**
+ * Parses a bookmark file and extracts the required information
+ * @param {string} filePath - Path to the bookmark file
+ * @returns {Array} Array of bookmark objects
+ */
+function parseBookmarkFile(filePath) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        return extractBookmarks(content);
+    } catch (error) {
+        console.error(`Error reading file ${filePath}:`, error.message);
+        return [];
+    }
+}
+
+/**
+ * Main function to run the bookmark extractor
+ */
+function main() {
+    // Get command line arguments
+    const args = process.argv.slice(2);
+
+    // Show help if no arguments or if help flag is provided
+    if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+        console.log(`
+Bookmark Extractor
+
+Usage: exbookmark [options] <bookmark-files...>
+
+Options:
+  -h, --help          Show this help message
+  -f, --format        Output format (table, csv, json) [default: table]
+
+Examples:
+  exbookmark bookmarks.html
+  exbookmark bookmarks.html favorites.html
+  exbookmark -f json bookmarks.html
+  exbookmark --format csv bookmarks.html
+        `);
+        return;
+    }
+
+    // Parse options
+    let format = 'table';
+    const files = [];
+
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '-f' || args[i] === '--format') {
+            if (i + 1 < args.length) {
+                format = args[i + 1].toLowerCase();
+                i++; // Skip next argument as it's the format value
+            }
+        } else if (args[i].startsWith('-')) {
+            // Ignore other flags for now
+        } else {
+            files.push(args[i]);
+        }
+    }
+
+    // Validate format
+    if (!['table', 'csv', 'json'].includes(format)) {
+        console.error(`Invalid format: ${format}. Use 'table', 'csv', or 'json'.`);
+        return;
+    }
+
+    // Process each file
+    for (const file of files) {
+        if (!fs.existsSync(file)) {
+            console.error(`File not found: ${file}`);
+            continue;
+        }
+
+
+        const bookmarks = parseBookmarkFile(file);
+
+        if (bookmarks.length === 0) {
+            console.log('No bookmarks found in this file.');
+            continue;
+        }
+
+        switch (format) {
+            case 'json':
+                console.log(JSON.stringify(bookmarks, null, 2));
+                break;
+
+            case 'csv':
+                console.log('Date,URL,Title');
+                bookmarks.forEach(b => {
+                    // Escape quotes and wrap in quotes for CSV
+                    const escapedTitle = b.title.replace(/"/g, '""');
+                    const escapedUrl = b.url.replace(/"/g, '""');
+                    console.log(`"${b.date}","${escapedUrl}","${escapedTitle}"`);
+                });
+                break;
+
+            case 'table':
+            default:
+                // Calculate column widths for nice formatting
+                const maxDateLen = Math.max(4, ...bookmarks.map(b => b.date.length));
+                const maxUrlLen = Math.max(3, ...bookmarks.map(b => b.url.length));
+                const maxTitleLen = Math.max(5, ...bookmarks.map(b => b.title.length));
+
+                // Limit column widths for readability
+                const dateWidth = Math.min(maxDateLen, 25);
+                const urlWidth = Math.min(maxUrlLen, 50);
+                const titleWidth = Math.min(maxTitleLen, 50);
+
+                // Print header
+                console.log(
+                    `${'Date'.padEnd(dateWidth)} | ${'URL'.padEnd(urlWidth)} | ${'Title'.padEnd(titleWidth)}`
+                );
+                console.log(
+                    `${'-'.repeat(dateWidth)} | ${'-'.repeat(urlWidth)} | ${'-'.repeat(titleWidth)}`
+                );
+
+                // Print each bookmark
+                bookmarks.forEach(b => {
+                    const truncatedDate = b.date.length > dateWidth ?
+                        b.date.substring(0, dateWidth - 3) + '...' : b.date;
+                    const truncatedUrl = b.url.length > urlWidth ?
+                        b.url.substring(0, urlWidth - 3) + '...' : b.url;
+                    const truncatedTitle = b.title.length > titleWidth ?
+                        b.title.substring(0, titleWidth - 3) + '...' : b.title;
+
+                    console.log(
+                        `${truncatedDate.padEnd(dateWidth)} | ${truncatedUrl.padEnd(urlWidth)} | ${truncatedTitle.padEnd(titleWidth)}`
+                    );
+                });
+                break;
+        }
+    }
+}
+
+// Run the main function if this script is executed directly
+if (require.main === module) {
+    main();
+}
+
+module.exports = { extractBookmarks, formatDate, parseBookmarkFile };

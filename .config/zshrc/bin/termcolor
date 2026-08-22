@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+echo -e "\n--- 标准八色 (Standard Colors) ---"
+for i in {0..7}; do
+  names=("黑色 (Black)" "红色 (Red)" "绿色 (Green)" "黄色 (Yellow)" "蓝色 (Blue)" "紫色 (Magenta)" "青色 (Cyan)" "白色 (White)")
+  printf "\x1b[4%dm     \x1b[0m  代码: \x1b[3%dm4%d\x1b[0m / \x1b[3%dm3%d\x1b[0m  ->  %s\n" $i $i $i $i $i "${names[$i]}"
+done
+
+echo -e "\n--- 高亮八色 (Bright Colors) ---"
+for i in {0..7}; do
+  names=("亮黑 (Bright Black)" "亮红 (Bright Red)" "亮绿 (Bright Green)" "亮黄 (Bright Yellow)" "亮蓝 (Bright Blue)" "亮紫 (Bright Magenta)" "亮青 (Bright Cyan)" "亮白 (Bright White)")
+  bg=$((100 + i))
+  fg=$((90 + i))
+  printf "\x1b[%dm     \x1b[0m  代码: \x1b[%dm%d\x1b[0m / \x1b[%dm%d\x1b[0m  ->  %s\n" $bg $fg $bg $fg $fg "${names[$i]}"
+done
+echo

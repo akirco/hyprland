@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+if [[ -z "$1" ]]; then
+    echo "错误：未提供视频链接。"
+    echo "用法: $(basename "$0") <视频链接URL>"
+    exit 1
+fi
+
+URL="$1"
+
+
+NOTIFY_ID=$(notify-send -p -i folder-download "准备下载" "正在初始化 yt-dlp...")
+
+stdbuf -oL yt-dlp --newline --progress-template "%(progress._percent_str)s | %(progress._speed_str)s" "$URL" 2>/dev/null | while read -r line; do
+
+    percent_val=$(echo "$line" | grep -oP '\d+(\.\d+)?(?=%)' | head -n1 | cut -d. -f1)
+
+
+    if [[ -n "$percent_val" ]]; then
+        notify-send -r "$NOTIFY_ID" \
+                    -h int:value:"$percent_val" \
+                    -i folder-download \
+                    "下载进度: $percent_val%" "$line"
+    fi
+
+done
+
+notify-send -r "$NOTIFY_ID" -i emblem-success "下载完成" "$URL"

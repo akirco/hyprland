@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# ===========================
+# 功能：交互式查看进程内存占用
+# 依赖：fzf, awk, ps
+# ===========================
+
+# 获取当前脚本的绝对路径，用于 fzf preview 调用自身
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+# ---------------------------------------------------------
+# 模式一：预览模式 (被 fzf --preview 调用时执行)
+# ---------------------------------------------------------
+if [[ "$1" == "--preview" ]]; then
+    PID="$2"
+
+    # 检查 PID 是否有效
+    if [ -z "$PID" ]; then
+        echo "Error: No PID provided."
+        exit 1
+    fi
+
+    # 检查进程是否存在
+    if [ ! -d "/proc/$PID" ]; then
+        echo "Process $PID does not exist."
+        exit 1
+    fi
+
+    # 获取进程名
+    NAME=$(cat /proc/"$PID"/comm 2>/dev/null)
+
+    # 获取内存信息
+    # 即使读取失败也给予默认值 0，防止报错
+    RSS_KB=$(awk '/VmRSS/ {print $2}' /proc/"$PID"/status 2>/dev/null)
+    RSS_KB=${RSS_KB:-0}
+
+    RSS_MB=$((RSS_KB / 1024))
+
+    # 格式化输出 (使用 ANSI 颜色代码让预览更美观)
+    echo -e "\033[1;34m========================================\033[0m"
+    echo -e "\033[1;36m Process Monitor\033[0m"
+    echo -e "\033[1;34m========================================\033[0m"
+    echo -e "  \033[1;33mPID:\033[0m      $PID"
+    echo -e "  \033[1;33mName:\033[0m     $NAME"
+    echo -e "\033[1;34m----------------------------------------\033[0m"
+    echo -e "  \033[1;32mRSS (内存):\033[0m ${RSS_MB} MB (${RSS_KB} KB)"
+    echo -e "\033[1;34m========================================\033[0m"
+
+    exit 0
+fi
+
+# ---------------------------------------------------------
+# 模式二：交互选择模式 (直接运行脚本时执行)
+# ---------------------------------------------------------
+
+# 检查 fzf 是否安装
+if ! command -v fzf &> /dev/null; then
+    echo "Error: 'fzf' is not installed. Please install it first."
+    exit 1
+fi
+
+# 运行 fzf 进行选择
+# ps -e: 列出所有进程
+# -o pid,user,comm: 输出 PID, 用户, 进程名
+# --preview: 调用本脚本自身并传入 --preview 和 PID ({1})
+# --preview-window: 设置预览窗口位置和大小
+SELECTED=$(ps -e -o pid=,user=,comm= | \
+    awk '{printf "%-8s %-10s %s\n", $1, $2, $3}' | \
+    fzf --preview="$SCRIPT_PATH --preview {1}" \
+        --preview-window=right:50%:wrap \
+        --header="Select a process to view memory usage" \
+        --height=80% \
+        --border \
+        --bind 'enter:become(echo {1})' \
+        --bind 'ctrl-c:abort'
+)
+
+# 如果用户选择了进程 (按下了回车)
+if [ -n "$SELECTED" ]; then
+    # 再次显示详细信息到主终端 (可选)
+    echo "You selected PID: $SELECTED"
+    $SCRIPT_PATH --preview "$SELECTED"
+else
+    echo "Cancelled."
+fi
