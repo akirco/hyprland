@@ -1,64 +1,26 @@
 {
     "default_path": "/home/neil/.local/bin",
     "bins": {
-        "/home/neil/.local/bin/aitutor": {
-            "path": "/home/neil/.local/bin/aitutor",
-            "remote_name": "aitutor",
-            "version": "v0.1.8",
-            "hash": "eb0f9c4120368819c8b84c8a048765540e57c2fc3bc840ce439202c8f5d91768",
-            "url": "https://github.com/naorpeled/aitutor/releases/tag/v0.1.8",
-            "provider": "github",
-            "package_path": "aitutor",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/ascii-art-generator": {
-            "path": "/home/neil/.local/bin/ascii-art-generator",
-            "remote_name": "ascii-art-generator",
-            "version": "v0.0.10",
-            "hash": "2578aa1bfbeabb8c909d180c9b87fffbcd043463a1b65c6598deb6c339b4e3b4",
-            "url": "https://github.com/judemont/ascii-art-generator",
-            "provider": "github",
-            "package_path": "",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/ascii-image-converter": {
-            "path": "/home/neil/.local/bin/ascii-image-converter",
-            "remote_name": "ascii-image-converter",
-            "version": "v1.13.1",
-            "hash": "c3f52c1a99ad09c787be28d0bf2ac00750575f92a714bfb364235ee0a81761a1",
-            "url": "https://github.com/TheZoraiz/ascii-image-converter",
-            "provider": "github",
-            "package_path": "ascii-image-converter_Linux_amd64_64bit/ascii-image-converter",
-            "pinned": false
-        },
         "/home/neil/.local/bin/baeru": {
             "path": "/home/neil/.local/bin/baeru",
             "remote_name": "baeru",
-            "version": "0.2.0",
-            "hash": "5260406483b857b99291fd9e1bd54609680e0297efa9a2fcf0d904d9281fc666",
-            "url": "https://github.com/blacknon/baeru",
+            "version": "0.3.0",
+            "hash": "665c940efae39613cdbe68c7a2517ee729f2ff11e76c46117525eb112181fbbb",
+            "url": "https://github.com/blacknon/baeru/releases/tag/0.3.0",
             "provider": "github",
             "package_path": "./baeru",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/biliup": {
-            "path": "/home/neil/.local/bin/biliup",
-            "remote_name": "biliup",
-            "version": "v1.1.29",
-            "hash": "e24df436f929c9d1db0385fcd16a27a9f41d9f5c85ec7bf9097e56b490c134d3",
-            "url": "https://github.com/biliup/biliup/releases/tag/v1.1.29",
-            "provider": "github",
-            "package_path": "biliupR-v1.1.29-x86_64-linux/biliup",
+            "selected_asset": "baeru-0.3.0.x86_64-unknown-linux-gnu.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/bit": {
             "path": "/home/neil/.local/bin/bit",
             "remote_name": "bit",
-            "version": "v0.3.0",
-            "hash": "01ef8444459e5dee00f8dd12f188d9beff050cf0fe6f78a77f3fa8c7a6d233e5",
-            "url": "https://github.com/superstarryeyes/bit",
+            "version": "v0.4.0",
+            "hash": "f664407ace0dd3874f4662d233eed3374192d0edb06daddf7b832fd4812e14ec",
+            "url": "https://github.com/paulilaaso/bit/releases/tag/v0.4.0",
             "provider": "github",
             "package_path": "bit",
+            "selected_asset": "bit_0.4.0_Linux_x86_64.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/bluekeys": {
@@ -69,26 +31,40 @@
             "url": "https://github.com/anirban12d/bluekeys/releases/tag/v1.3.2",
             "provider": "github",
             "package_path": "bluekeys",
+            "selected_asset": "",
             "pinned": false
         },
-        "/home/neil/.local/bin/buddy": {
-            "path": "/home/neil/.local/bin/buddy",
-            "remote_name": "buddy-linux-x86_64",
-            "version": "v.0.1.2",
-            "hash": "3c57337d788996308bdf33fd529900c288d611d017e94253c80bded5871079cb",
-            "url": "https://github.com/JVSCHANDRADITHYA/buddy/releases/tag/v.0.1.2",
+        "/home/neil/.local/bin/bulletty": {
+            "path": "/home/neil/.local/bin/bulletty",
+            "remote_name": "bulletty",
+            "version": "v0.3.0",
+            "hash": "31859f264833a0d4a00e460e7ba69b78ffe94fc9fe995f38c684e7d6ca5a56a9",
+            "url": "https://github.com/crocidb/bulletty/releases/tag/v0.3.0",
             "provider": "github",
-            "package_path": "",
+            "package_path": "bulletty-x86_64-unknown-linux-gnu/bulletty",
+            "selected_asset": "bulletty-x86_64-unknown-linux-gnu.tar.xz",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/cnmplayer": {
+            "path": "/home/neil/.local/bin/cnmplayer",
+            "remote_name": "cnmplayer",
+            "version": "v0.4.0",
+            "hash": "b226a905d13a5b8ebac55a55538865d185ef36199806769377778f456027124d",
+            "url": "https://github.com/professor-lee/CNMPlayer",
+            "provider": "github",
+            "package_path": "cnmplayer",
+            "selected_asset": "CNMPlayer_v0.4.0_linux_amd64.tar.xz",
             "pinned": false
         },
         "/home/neil/.local/bin/commandok": {
             "path": "/home/neil/.local/bin/commandok",
             "remote_name": "commandok",
-            "version": "v0.1.6",
-            "hash": "131afad76bf59b41b4d57250e1fafba2189783162ca289af064d2d528bfcdfcc",
-            "url": "https://github.com/64bit/commandOK/releases/tag/v0.1.6",
+            "version": "v0.1.7",
+            "hash": "c005ebb34709d258cbe69b903f86ad1ad7a9c44d89c818574945caf11ddf2ed6",
+            "url": "https://github.com/64bit/commandOK/releases/tag/v0.1.7",
             "provider": "github",
             "package_path": "commandok-x86_64-unknown-linux-gnu/commandok",
+            "selected_asset": "commandok-x86_64-unknown-linux-gnu.tar.xz",
             "pinned": false
         },
         "/home/neil/.local/bin/crontab-guru": {
@@ -99,6 +75,7 @@
             "url": "https://github.com/techquestsdev/crontab-guru/releases/tag/v1.0.2",
             "provider": "github",
             "package_path": "crontab-guru",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/dawn": {
@@ -106,9 +83,10 @@
             "remote_name": "dawn",
             "version": "v0.1.3",
             "hash": "3f03c1d384906297b98f1624feb50f6b03a3447480f7f41b0c5a4a759e01a544",
-            "url": "https://github.com/andrewmd5/dawn/releases/tag/v0.1.3",
+            "url": "https://github.com/andrewmd5/dawn",
             "provider": "github",
             "package_path": "dawn",
+            "selected_asset": "dawn-linux-x64.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/deadbranch": {
@@ -119,16 +97,29 @@
             "url": "https://github.com/armgabrielyan/deadbranch/releases/tag/v0.4.0",
             "provider": "github",
             "package_path": "deadbranch",
+            "selected_asset": "",
+            "pinned": false
+        },
+        "/home/neil/.local/bin/delta": {
+            "path": "/home/neil/.local/bin/delta",
+            "remote_name": "delta",
+            "version": "0.19.2",
+            "hash": "0b58e42cc1b01643fe43b22f70f0999537415d007dfb4bf996a260d83d0d6209",
+            "url": "https://github.com/dandavison/delta",
+            "provider": "github",
+            "package_path": "delta-0.19.2-x86_64-unknown-linux-gnu/delta",
+            "selected_asset": "delta-0.19.2-x86_64-unknown-linux-gnu.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/dotmgr": {
             "path": "/home/neil/.local/bin/dotmgr",
             "remote_name": "dotmgr",
-            "version": "v0.3.0",
-            "hash": "b6b3a2b58e3a9dcae19670142d3fb883bd5715735b5da062652aac51bb3f4ee6",
-            "url": "https://github.com/akirco/dotmgr/releases/tag/v0.3.0",
+            "version": "v0.3.2",
+            "hash": "90f8e7ba7531dfe4c07e0784ce3f9a8ff8659ee1d0720e4972bd4d1176fc0b25",
+            "url": "https://github.com/akirco/dotmgr/releases/tag/v0.3.2",
             "provider": "github",
             "package_path": "dotmgr",
+            "selected_asset": "dotmgr-v0.3.2-x86_64-unknown-linux-gnu.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/drift": {
@@ -139,6 +130,7 @@
             "url": "https://github.com/phlx0/drift/releases/tag/v1.1.0",
             "provider": "github",
             "package_path": "drift",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/ds-free-api": {
@@ -149,16 +141,7 @@
             "url": "https://github.com/NIyueeE/ds-free-api",
             "provider": "github",
             "package_path": "ds-free-api-v0.2.6-linux-x86_64-gnu/ds-free-api",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/eget": {
-            "path": "/home/neil/.local/bin/eget",
-            "remote_name": "eget",
-            "version": "v1.3.4",
-            "hash": "35039e7c73c7a4dcb43eeb629d9101ec07cd7f64211ca9bb262de1811e1ca931",
-            "url": "https://github.com/zyedidia/eget",
-            "provider": "github",
-            "package_path": "eget-1.3.4-linux_amd64/eget",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/env-pilot": {
@@ -169,6 +152,7 @@
             "url": "https://github.com/tomenden/env-pilot/releases",
             "provider": "github",
             "package_path": "env-pilot",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/envlens": {
@@ -179,6 +163,7 @@
             "url": "https://github.com/craigf-svg/envlens",
             "provider": "github",
             "package_path": "envlens",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/gitcredits": {
@@ -189,16 +174,18 @@
             "url": "https://github.com/Higangssh/gitcredits/releases/tag/v0.1.3",
             "provider": "github",
             "package_path": "gitcredits",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/gpk": {
             "path": "/home/neil/.local/bin/gpk",
             "remote_name": "gpk-linux-amd64",
-            "version": "v0.4.6",
-            "hash": "bca08e0c1a860be6ca18204501b1c9d33b819ef8c147e49a380b15c2bbea67ee",
-            "url": "https://github.com/neur0map/glazepkg/releases/tag/v0.4.6",
+            "version": "v0.6.2",
+            "hash": "ae1b0a7c7c1b445e5a5ee8dff9fb49a66583665e64dc24ccb5fa51a76f104e63",
+            "url": "https://github.com/neur0map/glazepkg/releases/tag/v0.6.2",
             "provider": "github",
             "package_path": "",
+            "selected_asset": "gpk-linux-amd64",
             "pinned": false
         },
         "/home/neil/.local/bin/gws": {
@@ -209,76 +196,51 @@
             "url": "https://github.com/googleworkspace/cli/releases/tag/v0.22.5",
             "provider": "github",
             "package_path": "./gws",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/jg": {
-            "path": "/home/neil/.local/bin/jg",
-            "remote_name": "jg",
-            "version": "v0.9.0",
-            "hash": "af2c9dd74d80fa296bc469e13b9d52dbf107f4e0a6e96cb0d935f5c8c13baa98",
-            "url": "https://github.com/micahkepe/jsongrep/releases/tag/v0.9.0",
-            "provider": "github",
-            "package_path": "jsongrep-0.9.0-x86_64-unknown-linux-musl/jg",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/jiq": {
             "path": "/home/neil/.local/bin/jiq",
             "remote_name": "jiq",
-            "version": "v3.22.1",
-            "hash": "eea433fe121d1a2be630df97e66ce9aa2c0e307c95ddc7e66a88526e86630306",
-            "url": "https://github.com/bellicose100xp/jiq/releases/tag/v3.22.1",
+            "version": "v3.32.3",
+            "hash": "cae58acedc542c6c43b1006dddc864aae3ac5e7317cf214d9a9d1eafddf37e17",
+            "url": "https://github.com/bellicose100xp/jiq/releases/tag/v3.32.3",
             "provider": "github",
             "package_path": "jiq-x86_64-unknown-linux-gnu/jiq",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/kairo": {
             "path": "/home/neil/.local/bin/kairo",
             "remote_name": "kairo",
-            "version": "1.6.6",
-            "hash": "c2f6b2b124b9134df5d596b02e02cd36795bace098ad1a1108eaf8730081edcf",
-            "url": "https://github.com/programmersd21/kairo/releases/tag/1.6.6",
+            "version": "1.7.3",
+            "hash": "df3f750ea206a6199d57cb98a4e492a57898e054e4eb8e98f8cced6d945aea02",
+            "url": "https://github.com/programmersd21/kairo/releases/tag/1.7.3",
             "provider": "github",
             "package_path": "kairo",
+            "selected_asset": "kairo_linux_x86_64.tar.gz",
             "pinned": false
         },
-        "/home/neil/.local/bin/kitten-tts": {
-            "path": "/home/neil/.local/bin/kitten-tts",
-            "remote_name": "kitten-tts",
-            "version": "v0.2.2",
-            "hash": "19b681b2d9d36b3d47c63f26dda09476113fdc187a0c9efcbaac6de6147b1100",
-            "url": "https://github.com/second-state/kitten_tts_rs/releases/tag/v0.2.2",
+        "/home/neil/.local/bin/lazycron": {
+            "path": "/home/neil/.local/bin/lazycron",
+            "remote_name": "lazycron",
+            "version": "v0.1.0",
+            "hash": "f1546a91058d1292dd0439859457156312d7863587f832a72881fe932c06b908",
+            "url": "https://github.com/Domenez-dev/lazycron",
             "provider": "github",
-            "package_path": "kitten-tts-x86_64-linux/kitten-tts",
+            "package_path": "lazycron",
+            "selected_asset": "",
             "pinned": false
         },
-        "/home/neil/.local/bin/kitten-tts-server": {
-            "path": "/home/neil/.local/bin/kitten-tts-server",
-            "remote_name": "kitten-tts-server",
-            "version": "v0.2.2",
-            "hash": "79d0b84550d584a15541955af7f5764559ba16827a447dd5b9141aa90efbbc9d",
-            "url": "https://github.com/second-state/kitten_tts_rs/releases/tag/v0.2.2",
+        "/home/neil/.local/bin/moviebox-tui": {
+            "path": "/home/neil/.local/bin/moviebox-tui",
+            "remote_name": "moviebox-tui",
+            "version": "v0.1.11",
+            "hash": "3d2c1de9f911f385bc27c5def3b23d4568a8dd406e64af2b2aa76be672131831",
+            "url": "https://github.com/mesamirh/MovieBox-Tui/",
             "provider": "github",
-            "package_path": "kitten-tts-x86_64-linux/kitten-tts-server",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/mdterm": {
-            "path": "/home/neil/.local/bin/mdterm",
-            "remote_name": "mdterm",
-            "version": "v2.0.0",
-            "hash": "a3ae3b6b498299c173db01f0d955d1c8b8a5b8d499121edb1bf6e7f6179cc69f",
-            "url": "https://github.com/bahdotsh/mdterm/releases",
-            "provider": "github",
-            "package_path": "mdterm",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/nano-ffmpeg": {
-            "path": "/home/neil/.local/bin/nano-ffmpeg",
-            "remote_name": "nano-ffmpeg",
-            "version": "v0.5.0",
-            "hash": "df97ce41dd4b146e4436fcd3769d555724b498dfa47b35986a3935b072a26fac",
-            "url": "https://github.com/dgr8akki/nano-ffmpeg/releases/tag/v0.5.0",
-            "provider": "github",
-            "package_path": "nano-ffmpeg",
+            "package_path": "./moviebox-tui",
+            "selected_asset": "MovieBox_Linux_x64.tar.gz",
             "pinned": false
         },
         "/home/neil/.local/bin/qrcp": {
@@ -289,6 +251,7 @@
             "url": "https://github.com/claudiodangelis/qrcp",
             "provider": "github",
             "package_path": "qrcp",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/reshell": {
@@ -299,6 +262,7 @@
             "url": "https://github.com/ClementNerma/ReShell",
             "provider": "github",
             "package_path": "reshell",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/see": {
@@ -309,6 +273,7 @@
             "url": "https://github.com/svanichkin/see/releases",
             "provider": "github",
             "package_path": "see",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/termbook": {
@@ -319,6 +284,7 @@
             "url": "https://github.com/tiulpin/termbook",
             "provider": "github",
             "package_path": "termbook",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/tmdb": {
@@ -326,9 +292,10 @@
             "remote_name": "tmdb",
             "version": "v0.1.0",
             "hash": "10f9892332dd598b3b2eaffe17b2400570316626dac1e668467460342515cc38",
-            "url": "https://github.com/akirco/tmdb/releases/tag/v0.1.0",
+            "url": "github.com/akirco/tmdb",
             "provider": "github",
             "package_path": "tmdb",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/tmlshock": {
@@ -339,66 +306,29 @@
             "url": "github.com/yorukot/tmlshock",
             "provider": "github",
             "package_path": "",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/tpix": {
-            "path": "/home/neil/.local/bin/tpix",
-            "remote_name": "tpix",
-            "version": "v1.0.3",
-            "hash": "2a32bde812bca85321912abb335df999266cd31ff4be949c8ff5bf073867c86c",
-            "url": "github.com/jesvedberg/tpix",
-            "provider": "github",
-            "package_path": "tpix",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/twitter-media-downloader": {
-            "path": "/home/neil/.local/bin/twitter-media-downloader",
-            "remote_name": "twitter-media-downloader",
-            "version": "v1.15.0",
-            "hash": "c219d14e31275c1a5a460c45bc2b2deec2305b88eb1cc6d96ebb3f041a27c09a",
-            "url": "https://github.com/mmpx12/twitter-media-downloader/releases/tag/v1.15.0",
-            "provider": "github",
-            "package_path": "twitter-media-downloader",
+            "selected_asset": "",
             "pinned": false
         },
         "/home/neil/.local/bin/vsd": {
             "path": "/home/neil/.local/bin/vsd",
             "remote_name": "vsd",
-            "version": "vsd-0.4.3",
-            "hash": "ef2b69c847dfbab4244625b2fa43d36ee0a52a8d8e54fe28da0113d39d56a057",
-            "url": "https://github.com/clitic/vsd?tab=readme-ov-file#installation",
+            "version": "vsd-0.5.0",
+            "hash": "bd0b2f2f27eb6325205e10738dad8cce3ebdd9089caef51bda5a5236cc61f588",
+            "url": "https://github.com/clitic/vsd/releases/tag/vsd-0.5.0",
             "provider": "github",
             "package_path": "./vsd",
+            "selected_asset": "vsd-0.5.0-x86_64-unknown-linux-musl.tar.xz",
             "pinned": false
         },
-        "/home/neil/.local/bin/workspace-launcher": {
-            "path": "/home/neil/.local/bin/workspace-launcher",
-            "remote_name": "workspace-launcher_2.3.0_linux_amd64",
-            "version": "v2.3.0",
-            "hash": "52cc739b0964b4c7dc482412144902e7e2e1d4c6e62ae7c43f6b0da3a504724a",
-            "url": "https://github.com/lalvarezt/workspace-launcher",
+        "/home/neil/.local/bin/xdl": {
+            "path": "/home/neil/.local/bin/xdl",
+            "remote_name": "xdl-linux-x64",
+            "version": "v1.2.1",
+            "hash": "1ebf9b428f2116241b4b03cc86a88e7a161e308c8b743ce2e365707ae42df5b0",
+            "url": "https://github.com/akirco/xdl",
             "provider": "github",
             "package_path": "",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/xiaohongshu-login": {
-            "path": "/home/neil/.local/bin/xiaohongshu-login",
-            "remote_name": "xiaohongshu-login-linux-amd64",
-            "version": "v2026.04.17.0444-c63748f",
-            "hash": "3f59e218787adee9d82cc77992d10ac7b12b93a2d737da3ec3cd54907bf42899",
-            "url": "https://github.com/xpzouying/xiaohongshu-mcp/releases/tag/v2026.04.17.0444-c63748f",
-            "provider": "github",
-            "package_path": "xiaohongshu-login-linux-amd64",
-            "pinned": false
-        },
-        "/home/neil/.local/bin/xiaohongshu-mcp": {
-            "path": "/home/neil/.local/bin/xiaohongshu-mcp",
-            "remote_name": "xiaohongshu-mcp-linux-amd64",
-            "version": "v2026.04.17.0444-c63748f",
-            "hash": "b25a181b47eff3a8505f1baee06404d068370ab55ff3bf32e54c0a634bee7662",
-            "url": "https://github.com/xpzouying/xiaohongshu-mcp/releases/tag/v2026.04.17.0444-c63748f",
-            "provider": "github",
-            "package_path": "xiaohongshu-mcp-linux-amd64",
+            "selected_asset": "",
             "pinned": false
         }
     }

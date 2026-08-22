@@ -11,6 +11,7 @@
   "modules-left": [
     "clock",
     "hyprland/workspaces"
+    // "mango/workspaces"
     //"niri/window",
     //"niri/workspaces"
   ],
@@ -19,10 +20,8 @@
   ],
   "modules-right": [
     "custom/cpucat",
-    "cpu",
-    "memory",
-    "temperature",
-    "battery",
+    "group/pigma",
+    "group/system",
     "network",
     "bluetooth",
     "backlight",
@@ -46,6 +45,13 @@
         "today": "<span color='#f38ba8'><b><u>{}</u></b></span>"
       }
     }
+  },
+  "mango/workspaces": {
+    "format": "{icon}",
+    "hide-empty": true,
+    "on-click": "activate",
+    "on-click-right": "toggle",
+    "overview-label": "OVERVIEW"
   },
   "niri/workspaces": {
     "format": "{icon}",
@@ -88,7 +94,7 @@
       "Search...": "  - Search"
     },
     "separate-outputs": true,
-    "max-length": 48,
+    "max-length": 30,
     "swap-icon-label": false
   },
   "niri/window": {
@@ -231,8 +237,82 @@
     "on-click": "~/.config/waybar/scripts/recorder toggle fullscreen",
     "on-click-right": "~/.config/waybar/scripts/recorder toggle region",
     "restart-interval": 1,
+    "return-type": "json"
+  },
+  "group/pigma": {
+    "orientation": "horizontal",
+    "modules": [
+      "custom/pigma",
+      "custom/pigma#like",
+      "custom/pigma#prev",
+      "custom/pigma#play",
+      "custom/pigma#next"
+    ],
+    "drawer": {
+      "transition-duration": 300,
+      "transition-left-to-right": true,
+      "children-class": "drawer-child"
+    }
+  },
+  "group/system": {
+    "orientation": "horizontal",
+    "modules": [
+      "battery",
+      "cpu",
+      "memory",
+      "temperature"
+    ],
+    "drawer": {
+      "transition-duration": 300,
+      "transition-left-to-right": true,
+      "children-class": "drawer-child"
+    }
+  },
+  "custom/pigma": {
+    "exec": "~/.config/waybar/scripts/pigma",
+    "interval": 1,
+    "tooltip": true,
     "return-type": "json",
-    "tooltip": true
+    "on-click-right": "pigma msg mode",
+    "on-scroll-up": "pigma msg volume +5",
+    "on-scroll-down": "pigma msg volume -5",
+    "format": "{}"
+  },
+  "custom/pigma#like": {
+    "exec": "~/.config/waybar/scripts/pigma --icon like",
+    "interval": 1,
+    "return-type": "json",
+    "on-click": "~/.config/waybar/scripts/pigma --like",
+    "on-scroll-up": "pigma msg volume +5",
+    "on-scroll-down": "pigma msg volume -5",
+    "format": "{}"
+  },
+  "custom/pigma#prev": {
+    "exec": "~/.config/waybar/scripts/pigma --icon prev",
+    "interval": "once",
+    "return-type": "json",
+    "on-click": "~/.config/waybar/scripts/pigma --previous",
+    "on-scroll-up": "pigma msg volume +5",
+    "on-scroll-down": "pigma msg volume -5",
+    "format": "{}"
+  },
+  "custom/pigma#play": {
+    "exec": "~/.config/waybar/scripts/pigma --icon play",
+    "interval": 1,
+    "return-type": "json",
+    "on-click": "~/.config/waybar/scripts/pigma --toggle",
+    "on-scroll-up": "pigma msg volume +5",
+    "on-scroll-down": "pigma msg volume -5",
+    "format": "{}"
+  },
+  "custom/pigma#next": {
+    "exec": "~/.config/waybar/scripts/pigma --icon next",
+    "interval": "once",
+    "return-type": "json",
+    "on-click": "~/.config/waybar/scripts/pigma --next",
+    "on-scroll-up": "pigma msg volume +5",
+    "on-scroll-down": "pigma msg volume -5",
+    "format": "{}"
   },
   "custom/vpn": {
     "size": 36,

@@ -2,13 +2,14 @@
   "workbench.editor.highlightModifiedTabs": true,
   "telemetry.telemetryLevel": "off",
   "workbench.startupEditor": "none",
-  "Lua.diagnostics.globals": [
-    "vim"
-  ],
-  "Lua.runtime.version": "LuaJIT",
+  "biome.lsp.bin": "/usr/bin/biome",
+  "rust-analyzer.checkOnSave": true,
+  "window.autoDetectHighContrast": false,
   "npm.packageManager": "auto",
-  "editor.fontSize": 19,
-  "editor.fontFamily": "'JetBrainsMonoNL Nerd Font','JetBrainsMono Nerd Font','Hack Nerd Font','Fira Code Script','Delugia PL Mono','FiraCode Nerd Font Mono Ret','Delugia PL Mono',Consolas",
+  "editor.fontSize": 20,
+  "window.zoomLevel": 1.6,
+  "editor.fontFamily": "'JetBrainsMono Nerd Font','Hack Nerd Font','Fira Code Script','Delugia PL Mono','FiraCode Nerd Font Mono Ret','Delugia PL Mono',Consolas",
+  // "editor.fontFamily": "'Monofur Nerd Font','JetBrainsMonoNL Nerd Font','JetBrainsMono Nerd Font','Hack Nerd Font','Fira Code Script','Delugia PL Mono','FiraCode Nerd Font Mono Ret','Delugia PL Mono',Consolas",
   "editor.fontLigatures": true,
   "editor.autoIndent": "full",
   "editor.cursorBlinking": "expand",
@@ -21,21 +22,20 @@
   "editor.stickyTabStops": true,
   "editor.tabCompletion": "on",
   "editor.suggest.insertMode": "replace",
-  "editor.formatOnSave": true,
   "editor.bracketPairColorization.independentColorPoolPerBracketType": true,
   "editor.tabSize": 2,
   "editor.suggestSelection": "first",
   "editor.largeFileOptimizations": true,
   "editor.codeActionsOnSave": {
-    "source.organizeImports": "always",
-    "source.sortImports": "always"
+    "source.organizeImports": "explicit",
+    "source.sortImports": "explicit"
   },
   "terminal.integrated.scrollback": 100000,
   "workbench.secondarySideBar.defaultVisibility": "hidden",
   "yaml.extension.recommendations": false,
   "yaml.format.singleQuote": true,
   "window.newWindowProfile": "Default",
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "biomejs.biome",
   "diffEditor.maxComputationTime": 0,
   "editor.minimap.showSlider": "always",
   "chat.mcp.autostart": "never",
@@ -60,7 +60,6 @@
   "terminal.integrated.fontWeight": "500",
   "terminal.integrated.fontFamily": "'JetBrainsMonoNL Nerd Font Mono'",
   "terminal.integrated.hideOnStartup": "always",
-  // Explorer settings
   "explorer.confirmDelete": false,
   "explorer.confirmDragAndDrop": false,
   "js/ts.updateImportsOnFileMove.enabled": "always",
@@ -68,12 +67,15 @@
   "files.trimTrailingWhitespace": true,
   "files.autoSave": "onFocusChange",
   "git.autofetch": true,
-  "[rust]": {
-    "editor.defaultFormatter": "rust-lang.rust-analyzer"
-  },
   "explorer.confirmPasteNative": false,
   "editor.accessibilitySupport": "off",
   "window.dialogStyle": "custom",
+  "workbench.editor.closeOnFileDelete": true,
+  "chat.agent.enabled": true,
+  "diffEditor.ignoreTrimWhitespace": true,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   },
@@ -81,19 +83,16 @@
     "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[tailwindcss]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
   },
   "files.associations": {
     "*.css": "tailwindcss"
   },
-  "workbench.editor.closeOnFileDelete": true,
-  "chat.agent.enabled": true,
-  "diffEditor.ignoreTrimWhitespace": true,
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
   },
   "[dart]": {
     "editor.formatOnSave": true,
@@ -109,13 +108,16 @@
     "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[markdown]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
   },
   "[go]": {
     "editor.defaultFormatter": "golang.go"
   },
   "[html]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tombi-toml.tombi"
   },
   "github.copilot.nextEditSuggestions.enabled": true,
   "github.copilot.enable": {
@@ -126,7 +128,9 @@
     "typescript": true,
     "json": true,
     "yaml": false,
-    "shellscript": false
+    "shellscript": true,
+    "typescriptreact": true,
+    "rust": false
   },
   "github.copilot.chat.codesearch.enabled": true,
   "github.copilot.chat.copilotDebugCommand.enabled": false,
@@ -244,17 +248,15 @@
     "mirrors.tencent.com"
   ],
   "python.analysis.typeCheckingMode": "standard",
-  "chat.commandCenter.enabled": false,
-  "nim.lsp.path": "/home/neil/.nimble/bin/nimlangserver",
-  "makefile.configureOnOpen": true,
   "editor.overtypeCursorStyle": "line",
-  "svelte.enable-ts-plugin": true,
   "terminal.integrated.enableImages": true,
   "json.schemaDownload.trustedDomains": {
+    "https://biomejs.dev": true,
     "https://developer.microsoft.com/json-schemas/": true,
     "https://json-schema.org/": true,
     "https://json.schemastore.org/": true,
     "https://openapi.vercel.sh": true,
+    "https://raw.githubusercontent.com": true,
     "https://raw.githubusercontent.com/devcontainers/spec/": true,
     "https://raw.githubusercontent.com/microsoft/vscode/": true,
     "https://schema.tauri.app": true,
@@ -263,25 +265,15 @@
     "https://v2-8-14.turborepo.dev": true,
     "https://www.schemastore.org/": true
   },
-  "workbench.activityBar.location": "top",
-  "workbench.iconTheme": "symbols",
   "go.gopath": "${env:HOME}/.go",
-  "[shellscript]": {
-    "editor.defaultFormatter": "shakram02.bash-beautify"
-  },
   "terminal.integrated.initialHint": false,
   "chat.tools.terminal.autoApprove": {
     "cargo check": true,
     "cargo build": true,
     "cargo clippy": true
   },
-  "chat.viewSessions.orientation": "stacked",
-  "[toml]": {
-    "editor.defaultFormatter": "tamasfe.even-better-toml"
-  },
   "telemetry.feedback.enabled": false,
   "telemetry.editStats.enabled": false,
-  "prisma.pinToPrisma6": true,
   "workbench.notifications.showInTitleBar": false,
   "workbench.browser.showInTitleBar": false,
   "window.customMenuBarAltFocus": false,
@@ -289,5 +281,72 @@
   "terminal.integrated.allowMnemonics": true,
   "update.titleBar": false,
   "workbench.navigationControl.enabled": false,
-  "window.commandCenter": false
+  "window.commandCenter": false,
+  "js/ts.experimental.useTsgo": true,
+  "editor.formatOnSave": true,
+  "biome.configurationPath": "/home/neil/.biome/biome.json",
+  "yaml.disableSchemaDetection": [
+    "**/.github/workflows/*.yml",
+    "**/.github/workflows/*.yaml",
+    "**/.gitea/workflows/*.yml",
+    "**/.gitea/workflows/*.yaml",
+    "**/.forgejo/workflows/*.yml",
+    "**/.forgejo/workflows/*.yaml"
+  ],
+  "chat.viewSessions.orientation": "stacked",
+  "chat.titleBar.openInAgentsWindow.enabled": false,
+  "claudeCode.disableLoginPrompt": true,
+  "claudeCode.environmentVariables": [
+    {
+      "name": "ANTHROPIC_BASE_URL",
+      "value": "http://localhost:8082"
+    },
+    {
+      "name": "ANTHROPIC_AUTH_TOKEN",
+      "value": "freecc"
+    },
+    {
+      "name": "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY",
+      "value": "1"
+    },
+    {
+      "name": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "value": "190000"
+    },
+    {
+      "name": "DISABLE_AUTOUPDATER",
+      "value": "1"
+    },
+    {
+      "name": "DISABLE_FEEDBACK_COMMAND",
+      "value": "1"
+    },
+    {
+      "name": "DISABLE_ERROR_REPORTING",
+      "value": "1"
+    }
+  ],
+  "gitlens.ai.model": "vscode",
+  "gitlens.ai.vscode.model": "copilotcli:",
+  "gitlens.views.scm.grouped.views": {
+    "commits": true,
+    "branches": true,
+    "remotes": true,
+    "stashes": true,
+    "tags": true,
+    "worktrees": true,
+    "contributors": true,
+    "fileHistory": true,
+    "repositories": true,
+    "searchAndCompare": false,
+    "launchpad": false
+  },
+  "extensions.supportAgentsWindow": {
+    "monokai.theme-monokai-pro-vscode": true
+  },
+  "workbench.iconTheme": "vscode-modern-icons",
+  "workbench.activityBar.location": "top",
+  "[github-actions-workflow]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  }
 }

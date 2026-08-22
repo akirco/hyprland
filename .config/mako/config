@@ -7,7 +7,7 @@ on-button-middle=none
 on-button-right=dismiss-all
 on-touch=dismiss
 # on-notify=exec paplay /usr/share/sounds/freedesktop/stereo/message.oga
-
+include=~/.cache/cwal/colors-mako
 # STYLE OPTIONS
 font='Adwaita Sans' 15
 width=350
@@ -29,36 +29,36 @@ max-visible=8
 layer=overlay
 # anchor=top-center
 
-background-color=#0e1011B3
-text-color=#cdd6f4
-border-color=#1AE58AB3
-progress-color=over #010010
+# background-color=#0e1011B3
+# text-color=#cdd6f4
+# border-color=#1AE58AB3
+# progress-color=over #010010
 icon-path=/usr/share/icons/candy-icons
 
-[urgency=low]
-border-color=#0e1011b3
-default-timeout=2000
-
-[urgency=normal]
-border-color=#1AE58Ab3
-default-timeout=5000
-
-
-[urgency=high]
-border-color=#000000
-text-color=#f38ba8
-default-timeout=0
-
-[category=mpd]
-border-color=#000000
-default-timeout=2000
-group-by=category
+# [urgency=low]
+# border-color=#0e1011b3
+# default-timeout=2000
+#
+# [urgency=normal]
+# border-color=#1AE58Ab3
+# default-timeout=5000
+#
+#
+# [urgency=high]
+# border-color=#000000
+# text-color=#f38ba8
+# default-timeout=0
+#
+# [category=mpd]
+# border-color=#000000
+# default-timeout=2000
+# group-by=category
 
 [app-name=show-keys]
 anchor=bottom-right
-font='JetBrainsMono Nerd Font Bold' 40
+font='JetBrainsMonoNL Nerd Font' 25
 width=300
-height=150
+height=120
 outer-margin=40
 padding=10
 format=<b>%s</b>\n%b

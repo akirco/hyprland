@@ -1,11 +1,25 @@
+@import "/home/neil/.cache/cwal/colors-waybar.css";
+
+
+/* @define-color wbg rgba(10, 10, 10, 0.9); */
+/* @define-color ibg rgba(22, 22, 22, 0.6); */
+/* @define-color shadow rgba(0, 0, 0, 0.377); */
+/* @define-color select rgba(17, 188, 120, 0.8); */
+@define-color wbg @color0;
+@define-color ibg @color14;
+@define-color shadow @color6;
+@define-color select @color14;
+@define-color ifg @color9;
+
+
 * {
   all: initial; /* Resets all properties to their default */
 }
 
 window {
   margin: 0px;
-  border: 2px solid #0b0b0b;
-  background-color: rgba(10, 10, 10, 0.9);
+  border: 0px;
+  background-color: @wbg;
   border-radius: 20px;
 }
 
@@ -14,8 +28,8 @@ window {
   min-height: 36px;
   padding: 8px 8px;
   border: none;
-  color: #b4befe;
-  background-color: rgba(22, 22, 22, 0.6);
+  color: @ifg;
+  background-color: @ibg;
   font-weight: bold;
   outline: none;
   border-radius: 30px;
@@ -50,8 +64,8 @@ window {
 }
 
 #text:selected {
-  color: #1ae58a;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.377);
+  color: @select;
+  text-shadow: @shadow;
   border: none;
   border-radius: 20px;
 }
@@ -70,7 +84,7 @@ window {
   border: none;
   border-radius: 8px;
   background: #000000;
-  box-shadow: inset 0 -2px 1px rgba(17, 188, 120, 0.8);
+  box-shadow: inset 0 -2px 1px @select;
 }
 
 #img {
